@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -109,6 +110,8 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
         "nextSteps": _next_steps(brief, score, signals),
         "risks": _risks(brief, risk),
         "timeline": _timeline(brief),
+        "smallestExperiment": _smallest_experiment(brief, signals),
+        "questions": _questions(brief, signals),
     }
 
 
@@ -161,8 +164,8 @@ def _word_count(text: str) -> int:
 
 
 def _signal_hits(text: str) -> set[str]:
-    lower = text.lower()
-    return {word for word in SIGNAL_WORDS if word in lower}
+    tokens = set(re.findall(r"[a-z0-9]+", text.lower()))
+    return SIGNAL_WORDS.intersection(tokens)
 
 
 def _deadline_fit(days: int) -> float:
@@ -198,8 +201,9 @@ def _summary(brief: ProjectBrief, score: int) -> str:
         stance = "This needs a learning prototype before a full build."
     else:
         stance = "This needs a smaller promise and a sharper outcome."
+    goal = brief.goal.rstrip(".")
     return (
-        f"{stance} Aim for {brief.goal.lower()} with about "
+        f'{stance} The first release target is "{goal}". Plan on about '
         f"{brief.hours_per_week} hours per week over {brief.deadline_days} days."
     )
 
@@ -253,3 +257,39 @@ def _timeline(brief: ProjectBrief) -> list[dict[str, str]]:
             "action": "Publish a demo, capture feedback, and choose the next single improvement.",
         },
     ]
+
+
+def _smallest_experiment(brief: ProjectBrief, signals: set[str]) -> dict[str, str]:
+    if {"dashboard", "data"}.intersection(signals):
+        build = "Use one realistic dataset and one decision-focused dashboard view."
+        test = "Give it to three target users without explaining the interface."
+        success = "At least two users identify the right next action within 60 seconds."
+    elif {"api", "automate"}.intersection(signals):
+        build = "Automate one narrow input-to-output path with a visible manual fallback."
+        test = "Run ten representative cases, including two deliberate failure cases."
+        success = "Eight normal cases complete correctly and every failure is recoverable."
+    else:
+        build = "Create the smallest end-to-end version that delivers the core promise once."
+        test = "Put it in front of three people who match the intended user."
+        success = "Two people complete the core workflow without step-by-step help."
+
+    if brief.deadline_days <= 7:
+        build = f"Time-box one day: {build[0].lower()}{build[1:]}"
+
+    return {"build": build, "test": test, "success": success}
+
+
+def _questions(brief: ProjectBrief, signals: set[str]) -> list[str]:
+    questions = [
+        "Who is the first specific user, and what are they doing immediately before this?",
+        "What evidence would make you stop, narrow, or change direction?",
+    ]
+    if {"api", "data", "automate"}.intersection(signals):
+        questions.insert(1, "Which data source or integration is most likely to fail first?")
+    elif brief.confidence <= 2:
+        questions.insert(1, "Which assumption is causing the low confidence, and can it be tested today?")
+    else:
+        questions.insert(1, "What is the one outcome the first release must improve?")
+    if brief.scope == "ambitious":
+        questions.append("Which entire feature family can be removed from the first release?")
+    return questions[:4]

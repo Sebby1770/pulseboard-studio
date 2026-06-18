@@ -4,6 +4,8 @@ PulseBoard Studio is a small Python and JavaScript app for scoring project ideas
 
 The browser UI collects a project brief, calls a Python API, and renders a score, risks, and a practical next-step plan. It is designed to run locally with the Python standard library and to deploy cleanly on Vercel as static files plus a Python serverless function.
 
+Version 0.2 adds smallest-experiment guidance, decision-memo exports, complete history snapshots, score comparisons, assumption questions, and a visible execution timeline. See [CHANGELOG.md](CHANGELOG.md) for release history.
+
 ## Stack
 
 - JavaScript, HTML, and CSS for the browser app
