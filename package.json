@@ -1,0 +1,19 @@
+{
+  "name": "pulseboard-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Python and JavaScript project-scoring dashboard.",
+  "scripts": {
+    "start": "python3 server.py",
+    "test": "npm run test:js && npm run test:py",
+    "test:js": "node --check static/app.js",
+    "test:py": "python3 -m unittest discover -s tests"
+  },
+  "keywords": [
+    "python",
+    "javascript",
+    "vercel",
+    "dashboard"
+  ],
+  "license": "MIT"
+}
