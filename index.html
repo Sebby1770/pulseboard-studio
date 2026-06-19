@@ -17,7 +17,7 @@
           <p class="app-mark">PulseBoard Studio</p>
           <h1>Score the next project before it eats the week.</h1>
         </div>
-        <div class="status-chip" id="apiStatus" aria-live="polite">API idle</div>
+        <div class="status-chip" id="apiStatus" role="status" aria-live="polite">API idle</div>
       </header>
 
       <section class="workspace" aria-label="Project scoring workspace">
@@ -82,6 +82,10 @@
             <button type="button" id="sampleButton">Sample</button>
             <button type="button" id="clearButton">Clear</button>
           </div>
+          <div class="form-feedback">
+            <p class="form-error" id="formError" role="alert" hidden></p>
+            <p class="draft-status" id="draftStatus" role="status" aria-live="polite"></p>
+          </div>
         </form>
 
         <section class="panel result-panel" aria-live="polite">
@@ -102,6 +106,18 @@
           <div class="signal-row" id="signalRow" aria-label="Detected project signals"></div>
 
           <div class="meter-grid" id="metricGrid"></div>
+
+          <section class="lever-section" id="leverSection" hidden>
+            <div>
+              <p class="eyebrow">Best lever</p>
+              <h3 id="leverTitle"></h3>
+              <p id="leverAction"></p>
+            </div>
+            <div class="lever-context">
+              <strong id="leverMetric"></strong>
+              <span id="leverRationale"></span>
+            </div>
+          </section>
 
           <section class="experiment-section" id="experimentSection" hidden>
             <div class="section-heading">
@@ -149,10 +165,10 @@
         </aside>
       </section>
       <footer class="app-footer">
-        <span>PulseBoard Studio v0.2.0</span>
+        <span>PulseBoard Studio v0.3.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>
-    <script src="/static/app.js" defer></script>
+    <script type="module" src="/static/app.js"></script>
   </body>
 </html>

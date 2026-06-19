@@ -249,6 +249,28 @@ input[type="range"] {
   gap: 10px;
 }
 
+.form-feedback {
+  min-height: 18px;
+}
+
+.form-feedback p {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.form-feedback p:empty {
+  display: none;
+}
+
+.form-error {
+  color: #b42318;
+}
+
+.draft-status {
+  color: var(--muted);
+}
+
 .primary-action {
   border-color: var(--ink);
   background: var(--ink);
@@ -325,6 +347,46 @@ input[type="range"] {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   min-height: 84px;
+}
+
+.lever-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr);
+  gap: 18px;
+  margin-top: 18px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 18px 0;
+}
+
+.lever-section h3 {
+  margin-bottom: 8px;
+  font-size: 1.25rem;
+}
+
+.lever-section p:last-child {
+  margin-bottom: 0;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.lever-context {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  border-left: 3px solid var(--amber);
+  padding-left: 14px;
+}
+
+.lever-context strong {
+  color: var(--teal);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.lever-context span {
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .metric {
@@ -577,6 +639,10 @@ input[type="range"] {
     grid-template-columns: 1fr;
   }
 
+  .lever-section {
+    grid-template-columns: 1fr;
+  }
+
   .meter-grid,
   .control-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -618,6 +684,13 @@ input[type="range"] {
   .timeline-list li {
     grid-template-columns: 1fr;
     gap: 3px;
+  }
+
+  .lever-context {
+    border-top: 3px solid var(--amber);
+    border-left: 0;
+    padding-top: 12px;
+    padding-left: 0;
   }
 
   .segmented label {

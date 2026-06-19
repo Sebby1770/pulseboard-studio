@@ -23,6 +23,11 @@ class EngineTests(unittest.TestCase):
         self.assertIn("api", result["signals"])
         self.assertEqual(set(result["smallestExperiment"]), {"build", "test", "success"})
         self.assertGreaterEqual(len(result["questions"]), 3)
+        self.assertEqual(result["modelVersion"], "3.0")
+        self.assertEqual(
+            set(result["recommendedLever"]),
+            {"metric", "title", "action", "rationale"},
+        )
 
     def test_empty_idea_is_rejected(self):
         with self.assertRaises(ProjectInputError):
@@ -58,6 +63,20 @@ class EngineTests(unittest.TestCase):
         )
 
         self.assertTrue(result["risks"])
+
+    def test_ambitious_scope_recommends_feasibility_lever(self):
+        result = analyse_project(
+            {
+                "idea": "Build a platform with an API, dashboard, automation, and analytics.",
+                "goal": "Launch the complete platform.",
+                "deadlineDays": 21,
+                "hoursPerWeek": 4,
+                "confidence": 2,
+                "scope": "ambitious",
+            }
+        )
+
+        self.assertEqual(result["recommendedLever"]["metric"], "Feasibility")
 
 
 if __name__ == "__main__":

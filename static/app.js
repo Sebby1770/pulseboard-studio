@@ -1,3 +1,14 @@
+import {
+  HISTORY_LIMIT,
+  buildMemo,
+  createHistoryEntry,
+  migrateHistory,
+  parseDraft,
+  parseHistory,
+  serializeDraft,
+  titleCase,
+} from "./core.js";
+
 const form = document.querySelector("#projectForm");
 const apiStatus = document.querySelector("#apiStatus");
 const verdict = document.querySelector("#verdict");
@@ -14,6 +25,11 @@ const experimentSection = document.querySelector("#experimentSection");
 const experimentGrid = document.querySelector("#experimentGrid");
 const primaryResults = document.querySelector("#primaryResults");
 const secondaryResults = document.querySelector("#secondaryResults");
+const leverSection = document.querySelector("#leverSection");
+const leverMetric = document.querySelector("#leverMetric");
+const leverTitle = document.querySelector("#leverTitle");
+const leverAction = document.querySelector("#leverAction");
+const leverRationale = document.querySelector("#leverRationale");
 const historyList = document.querySelector("#historyList");
 const sampleButton = document.querySelector("#sampleButton");
 const clearButton = document.querySelector("#clearButton");
@@ -22,9 +38,14 @@ const confidence = document.querySelector("#confidence");
 const confidenceValue = document.querySelector("#confidenceValue");
 const copyMemoButton = document.querySelector("#copyMemoButton");
 const downloadMemoButton = document.querySelector("#downloadMemoButton");
+const draftStatus = document.querySelector("#draftStatus");
+const formError = document.querySelector("#formError");
 
 const HISTORY_KEY = "pulseboard.history.v2";
+const LEGACY_HISTORY_KEY = "pulseboard.history.v1";
+const DRAFT_KEY = "pulseboard.draft.v1";
 let lastAnalysis = null;
+let draftTimer = null;
 
 const sampleProject = {
   idea: "A lightweight customer dashboard that tracks API uptime, usage spikes, support notes, and launch blockers for small SaaS teams.",
@@ -91,7 +112,7 @@ function renderResult(result) {
       const number = document.createElement("strong");
       const meter = document.createElement("div");
       const bar = document.createElement("i");
-      label.textContent = titleCase(name);
+      label.textContent = name === "risk" ? "Risk (lower is better)" : titleCase(name);
       number.textContent = value;
       meter.className = "meter";
       bar.style.width = `${value}%`;
@@ -100,6 +121,13 @@ function renderResult(result) {
       return item;
     }),
   );
+
+  const lever = result.recommendedLever;
+  leverMetric.textContent = lever.metric;
+  leverTitle.textContent = lever.title;
+  leverAction.textContent = lever.action;
+  leverRationale.textContent = lever.rationale;
+  leverSection.hidden = false;
 
   nextSteps.replaceChildren(...result.nextSteps.map((step) => listItem(step)));
   risks.replaceChildren(...result.risks.map((risk) => listItem(risk)));
@@ -141,10 +169,6 @@ function listItem(text) {
   return item;
 }
 
-function titleCase(value) {
-  return value.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase());
-}
-
 function setStatus(message, state = "idle") {
   apiStatus.textContent = message;
   apiStatus.dataset.state = state;
@@ -152,34 +176,28 @@ function setStatus(message, state = "idle") {
 
 function saveHistory(payload, result) {
   const history = loadHistory();
-  const previousScore = history[0]?.score;
-  const entry = {
-    id: crypto.randomUUID(),
-    idea: payload.idea,
-    score: result.score,
-    verdict: result.verdict,
-    delta: Number.isFinite(previousScore) ? result.score - previousScore : null,
-    payload,
-    result,
-    createdAt: new Date().toISOString(),
-  };
-  localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...history].slice(0, 6)));
+  const entry = createHistoryEntry(payload, result, history);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify([entry, ...history].slice(0, HISTORY_LIMIT)));
   renderHistory();
 }
 
 function loadHistory() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+  const currentRaw = localStorage.getItem(HISTORY_KEY);
+  const history = migrateHistory(currentRaw, localStorage.getItem(LEGACY_HISTORY_KEY));
+  if (!parseHistory(currentRaw).length && history.length) {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    localStorage.removeItem(LEGACY_HISTORY_KEY);
   }
+  return history;
 }
 
 function renderHistory() {
   const history = loadHistory();
   if (!history.length) {
-    historyList.innerHTML = '<p class="empty-state">No scores yet.</p>';
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "No scores yet.";
+    historyList.replaceChildren(empty);
     return;
   }
   historyList.replaceChildren(
@@ -204,6 +222,7 @@ function renderHistory() {
           applyPayload(entry.payload);
           renderResult(entry.result);
           lastAnalysis = { payload: entry.payload, result: entry.result };
+          saveDraft(entry.payload, "Draft restored");
           setStatus("Snapshot restored", "ok");
         } else {
           form.idea.value = entry.idea;
@@ -229,6 +248,7 @@ function applyPayload(payload) {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const payload = formPayload();
+  setFormError("");
   setStatus("Scoring", "busy");
   form.querySelector(".primary-action").disabled = true;
   try {
@@ -236,10 +256,13 @@ form.addEventListener("submit", async (event) => {
     renderResult(result);
     lastAnalysis = { payload, result };
     saveHistory(payload, result);
+    saveDraft(payload);
     setStatus("API ok", "ok");
   } catch (error) {
     setStatus(error.name === "AbortError" ? "Timed out" : "Needs API", "error");
     summary.textContent = error.message;
+    setFormError(error.message);
+    if (!payload.idea.trim()) form.idea.focus();
   } finally {
     form.querySelector(".primary-action").disabled = false;
   }
@@ -247,6 +270,7 @@ form.addEventListener("submit", async (event) => {
 
 sampleButton.addEventListener("click", () => {
   applyPayload(sampleProject);
+  saveDraft(sampleProject);
 });
 
 clearButton.addEventListener("click", () => {
@@ -263,12 +287,16 @@ clearButton.addEventListener("click", () => {
   questions.replaceChildren();
   experimentGrid.replaceChildren();
   experimentSection.hidden = true;
+  leverSection.hidden = true;
   primaryResults.hidden = true;
   secondaryResults.hidden = true;
   copyMemoButton.disabled = true;
   downloadMemoButton.disabled = true;
   confidenceValue.textContent = confidence.value;
   lastAnalysis = null;
+  localStorage.removeItem(DRAFT_KEY);
+  draftStatus.textContent = "";
+  setFormError("");
   setStatus("API idle");
 });
 
@@ -280,6 +308,9 @@ clearHistoryButton.addEventListener("click", () => {
 confidence.addEventListener("input", () => {
   confidenceValue.textContent = confidence.value;
 });
+
+form.addEventListener("input", scheduleDraftSave);
+form.addEventListener("change", scheduleDraftSave);
 
 copyMemoButton.addEventListener("click", async () => {
   if (!lastAnalysis) return;
@@ -301,49 +332,37 @@ downloadMemoButton.addEventListener("click", () => {
   link.href = url;
   link.download = "pulseboard-decision-memo.md";
   link.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
   setStatus("Memo downloaded", "ok");
 });
 
-function buildMemo(payload, result) {
-  const metricRows = Object.entries(result.metrics)
-    .map(([name, value]) => `- ${titleCase(name)}: ${value}`)
-    .join("\n");
-  const steps = result.nextSteps.map((step, index) => `${index + 1}. ${step}`).join("\n");
-  const riskRows = result.risks.map((risk) => `- ${risk}`).join("\n");
-  const questionRows = result.questions.map((question) => `- ${question}`).join("\n");
-  return `# PulseBoard Decision Memo
-
-## ${result.verdict} - ${result.score}/100
-
-**Idea:** ${payload.idea}
-
-**First release goal:** ${payload.goal || "Ship a usable first version."}
-
-${result.summary}
-
-## Scorecard
-
-${metricRows}
-
-## Smallest Useful Experiment
-
-- Build: ${result.smallestExperiment.build}
-- Test: ${result.smallestExperiment.test}
-- Success signal: ${result.smallestExperiment.success}
-
-## Next Steps
-
-${steps}
-
-## Risks
-
-${riskRows}
-
-## Questions To Answer
-
-${questionRows}
-`;
+function scheduleDraftSave() {
+  window.clearTimeout(draftTimer);
+  draftStatus.textContent = "Saving draft";
+  draftTimer = window.setTimeout(() => saveDraft(formPayload()), 250);
 }
 
+function saveDraft(payload, message = "Draft saved") {
+  if (!payload.idea.trim() && !payload.goal.trim()) {
+    localStorage.removeItem(DRAFT_KEY);
+    draftStatus.textContent = "";
+    return;
+  }
+  localStorage.setItem(DRAFT_KEY, serializeDraft(payload));
+  draftStatus.textContent = message;
+}
+
+function restoreDraft() {
+  const draft = parseDraft(localStorage.getItem(DRAFT_KEY));
+  if (!draft) return;
+  applyPayload(draft);
+  draftStatus.textContent = "Draft restored";
+}
+
+function setFormError(message) {
+  formError.textContent = message;
+  formError.hidden = !message;
+}
+
+restoreDraft();
 renderHistory();

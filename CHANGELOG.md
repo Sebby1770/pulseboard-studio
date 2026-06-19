@@ -4,6 +4,34 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [0.3.0] - 2026-06-19
+
+### Added
+
+- A tailored best-lever recommendation that explains the most useful way to improve each score.
+- Automatic local draft saving and recovery for unfinished project briefs.
+- Node unit tests for history migration, draft parsing, score deltas, formatting, and Markdown exports.
+- Explicit accessible form errors and draft-save status announcements.
+- Scoring model version metadata in API responses.
+
+### Changed
+
+- Decision memos now include the best lever and the complete execution timeline.
+- Risk metrics now state that lower values are better.
+- Browser JavaScript now uses a shared ES module so pure behavior can be tested without a DOM.
+- Updated the application version to `0.3.0`.
+
+### Fixed
+
+- Older v1 history entries now migrate into the current history store instead of disappearing.
+- Stored v0.2 results receive compatible recommendation defaults when restored.
+- Download URLs are revoked after the browser begins the file transfer instead of immediately.
+
+### Security
+
+- Malformed local draft and history data is rejected before it reaches the UI.
+- Empty history states now use DOM text APIs instead of HTML injection.
+
 ## [0.2.0] - 2026-06-19
 
 ### Added
@@ -39,5 +67,6 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[0.3.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Sebby1770/pulseboard-studio/commits/51a84c8

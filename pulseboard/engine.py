@@ -40,6 +40,8 @@ RISK_FACTORS = {
     "high": 3,
 }
 
+MODEL_VERSION = "3.0"
+
 
 @dataclass(frozen=True)
 class ProjectBrief:
@@ -96,17 +98,21 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
     )
     score = round(clarity * 0.26 + feasibility * 0.34 + momentum * 0.24 + (100 - risk) * 0.16)
 
+    metrics = {
+        "clarity": round(clarity),
+        "feasibility": round(feasibility),
+        "momentum": round(momentum),
+        "risk": round(risk),
+    }
+
     return {
+        "modelVersion": MODEL_VERSION,
         "score": score,
         "verdict": _verdict(score),
         "summary": _summary(brief, score),
         "signals": sorted(signals),
-        "metrics": {
-            "clarity": round(clarity),
-            "feasibility": round(feasibility),
-            "momentum": round(momentum),
-            "risk": round(risk),
-        },
+        "metrics": metrics,
+        "recommendedLever": _recommended_lever(brief, metrics),
         "nextSteps": _next_steps(brief, score, signals),
         "risks": _risks(brief, risk),
         "timeline": _timeline(brief),
@@ -293,3 +299,46 @@ def _questions(brief: ProjectBrief, signals: set[str]) -> list[str]:
     if brief.scope == "ambitious":
         questions.append("Which entire feature family can be removed from the first release?")
     return questions[:4]
+
+
+def _recommended_lever(brief: ProjectBrief, metrics: dict[str, int]) -> dict[str, str]:
+    comparable = {
+        "clarity": metrics["clarity"],
+        "feasibility": metrics["feasibility"],
+        "momentum": metrics["momentum"],
+        "risk": 100 - metrics["risk"],
+    }
+    weakest = min(comparable, key=comparable.get)
+
+    if brief.scope == "ambitious" and metrics["feasibility"] < 75:
+        weakest = "feasibility"
+    elif brief.deadline_days <= 14 and metrics["risk"] >= 45:
+        weakest = "risk"
+
+    levers = {
+        "clarity": {
+            "metric": "Clarity",
+            "title": "Make the promise measurable",
+            "action": "Rewrite the release goal as one observable user outcome with a number or time limit.",
+            "rationale": "A sharper finish line improves prioritization before any code changes.",
+        },
+        "feasibility": {
+            "metric": "Feasibility",
+            "title": "Remove one feature family",
+            "action": "Move one complete feature group out of the first release and keep one end-to-end workflow.",
+            "rationale": "Scope reduction is the fastest way to make the current time and capacity credible.",
+        },
+        "momentum": {
+            "metric": "Momentum",
+            "title": "Book the first build block",
+            "action": f"Schedule one uninterrupted {min(brief.hours_per_week, 4)}-hour block and finish a visible happy path.",
+            "rationale": "A concrete build block converts confidence into evidence and makes the next decision easier.",
+        },
+        "risk": {
+            "metric": "Risk",
+            "title": "Test the most fragile assumption",
+            "action": "Name the assumption most likely to invalidate the project and test it before expanding scope.",
+            "rationale": "Reducing one unknown is more valuable than polishing several known parts.",
+        },
+    }
+    return levers[weakest]
