@@ -46,7 +46,13 @@ EVIDENCE_SCORES = {
     "users": 90,
 }
 
-MODEL_VERSION = "4.0"
+EVIDENCE_MARGINS = {
+    "idea": 12,
+    "signals": 7,
+    "users": 3,
+}
+
+MODEL_VERSION = "5.0"
 
 
 @dataclass(frozen=True)
@@ -136,6 +142,7 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "modelVersion": MODEL_VERSION,
         "score": score,
+        "scoreRange": _score_range(score, brief.evidence),
         "verdict": _verdict(score),
         "summary": _summary(brief, score),
         "evidenceGrade": _evidence_grade(brief.evidence),
@@ -404,3 +411,12 @@ def _evidence_grade(evidence: str) -> dict[str, str]:
         },
     }
     return grades[evidence]
+
+
+def _score_range(score: int, evidence: str) -> dict[str, int]:
+    margin = EVIDENCE_MARGINS[evidence]
+    return {
+        "low": max(0, score - margin),
+        "high": min(100, score + margin),
+        "margin": margin,
+    }

@@ -53,6 +53,28 @@ export function createHistoryEntry(payload, result, history, options = {}) {
   };
 }
 
+export function compareResults(previous, current) {
+  if (!previous?.metrics || !current?.metrics) return null;
+  const metrics = Object.entries(current.metrics)
+    .filter(([name, value]) => Number.isFinite(value) && Number.isFinite(previous.metrics[name]))
+    .map(([name, value]) => {
+      const delta = value - previous.metrics[name];
+      const impact = name === "risk" ? -delta : delta;
+      return {
+        name,
+        delta,
+        status: impact > 0 ? "improved" : impact < 0 ? "worsened" : "stable",
+      };
+    });
+
+  const scoreDelta = current.score - previous.score;
+  return {
+    scoreDelta,
+    status: scoreDelta > 0 ? "improved" : scoreDelta < 0 ? "worsened" : "stable",
+    metrics,
+  };
+}
+
 export function serializeDraft(payload) {
   return JSON.stringify({ version: 2, payload: normalizePayload(payload) });
 }
@@ -86,6 +108,7 @@ export function buildMemo(payload, result) {
   const normalizedPayload = normalizePayload(payload);
   const lever = result.recommendedLever || DEFAULT_LEVER;
   const evidenceGrade = result.evidenceGrade || defaultEvidenceGrade();
+  const scoreRange = result.scoreRange || defaultScoreRange(result);
   const metricRows = Object.entries(result.metrics)
     .map(([name, value]) => `- ${titleCase(name)}: ${value}`)
     .join("\n");
@@ -106,6 +129,8 @@ export function buildMemo(payload, result) {
 **Validation evidence:** ${EVIDENCE_LABELS[normalizedPayload.evidence]}
 
 **Score confidence:** ${evidenceGrade.label} - ${evidenceGrade.detail}
+
+**Likely score range:** ${scoreRange.low}-${scoreRange.high}
 
 ${result.summary}
 
@@ -161,7 +186,19 @@ function withResultDefaults(result) {
     modelVersion: result.modelVersion || "2.0",
     metrics: { ...result.metrics, evidence: result.metrics?.evidence ?? 20 },
     evidenceGrade: result.evidenceGrade || defaultEvidenceGrade(),
+    scoreRange: result.scoreRange || defaultScoreRange(result),
     recommendedLever: result.recommendedLever || DEFAULT_LEVER,
+  };
+}
+
+function defaultScoreRange(result) {
+  const evidence = result.metrics?.evidence ?? 20;
+  const margin = evidence >= 80 ? 3 : evidence >= 50 ? 7 : 12;
+  const score = Number.isFinite(result.score) ? result.score : 0;
+  return {
+    low: Math.max(0, score - margin),
+    high: Math.min(100, score + margin),
+    margin,
   };
 }
 

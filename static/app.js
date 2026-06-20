@@ -1,6 +1,7 @@
 import {
   HISTORY_LIMIT,
   buildMemo,
+  compareResults,
   createHistoryEntry,
   migrateHistory,
   normalizePayload,
@@ -15,6 +16,7 @@ const apiStatus = document.querySelector("#apiStatus");
 const verdict = document.querySelector("#verdict");
 const summary = document.querySelector("#summary");
 const evidenceNote = document.querySelector("#evidenceNote");
+const scoreRange = document.querySelector("#scoreRange");
 const scoreRing = document.querySelector("#scoreRing");
 const scoreValue = document.querySelector("#scoreValue");
 const metricGrid = document.querySelector("#metricGrid");
@@ -32,6 +34,10 @@ const leverMetric = document.querySelector("#leverMetric");
 const leverTitle = document.querySelector("#leverTitle");
 const leverAction = document.querySelector("#leverAction");
 const leverRationale = document.querySelector("#leverRationale");
+const comparisonSection = document.querySelector("#comparisonSection");
+const comparisonTitle = document.querySelector("#comparisonTitle");
+const comparisonScore = document.querySelector("#comparisonScore");
+const comparisonGrid = document.querySelector("#comparisonGrid");
 const historyList = document.querySelector("#historyList");
 const sampleButton = document.querySelector("#sampleButton");
 const clearButton = document.querySelector("#clearButton");
@@ -100,6 +106,8 @@ function renderResult(result) {
   evidenceNote.textContent = `${result.evidenceGrade.label}: ${result.evidenceGrade.detail}`;
   evidenceNote.hidden = false;
   scoreValue.textContent = result.score;
+  scoreRange.textContent = `Likely range ${result.scoreRange.low}-${result.scoreRange.high} (+/- ${result.scoreRange.margin})`;
+  scoreRange.hidden = false;
   scoreRing.style.setProperty("--score", result.score);
 
   signalRow.replaceChildren(
@@ -170,6 +178,39 @@ function renderResult(result) {
   downloadMemoButton.disabled = false;
 }
 
+function renderComparison(previous, current) {
+  const comparison = compareResults(previous, current);
+  if (!comparison) {
+    comparisonSection.hidden = true;
+    comparisonGrid.replaceChildren();
+    return;
+  }
+
+  const titles = {
+    improved: "This scenario is stronger",
+    worsened: "This scenario needs more work",
+    stable: "The overall score is unchanged",
+  };
+  comparisonTitle.textContent = titles[comparison.status];
+  comparisonScore.textContent = `${comparison.scoreDelta > 0 ? "+" : ""}${comparison.scoreDelta}`;
+  comparisonScore.dataset.status = comparison.status;
+  comparisonGrid.replaceChildren(
+    ...comparison.metrics.map((metric) => {
+      const item = document.createElement("div");
+      const label = document.createElement("span");
+      const delta = document.createElement("strong");
+      const status = document.createElement("small");
+      item.dataset.status = metric.status;
+      label.textContent = metric.name === "risk" ? "Risk" : titleCase(metric.name);
+      delta.textContent = metric.delta === 0 ? "0" : `${metric.delta > 0 ? "+" : ""}${metric.delta}`;
+      status.textContent = titleCase(metric.status);
+      item.append(label, delta, status);
+      return item;
+    }),
+  );
+  comparisonSection.hidden = false;
+}
+
 function listItem(text) {
   const item = document.createElement("li");
   item.textContent = text;
@@ -226,8 +267,12 @@ function renderHistory() {
       button.append(score, verdictText, idea, delta);
       button.addEventListener("click", () => {
         if (entry.payload && entry.result) {
+          const comparisonBase = history.find(
+            (candidate) => candidate.id !== entry.id && candidate.result,
+          )?.result;
           applyPayload(entry.payload);
           renderResult(entry.result);
+          renderComparison(comparisonBase, entry.result);
           lastAnalysis = { payload: entry.payload, result: entry.result };
           saveDraft(entry.payload, "Draft restored");
           setStatus("Snapshot restored", "ok");
@@ -257,12 +302,14 @@ function applyPayload(payload) {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const payload = formPayload();
+  const previousResult = loadHistory().find((entry) => entry.result)?.result;
   setFormError("");
   setStatus("Scoring", "busy");
   form.querySelector(".primary-action").disabled = true;
   try {
     const result = await scoreProject(payload);
     renderResult(result);
+    renderComparison(previousResult, result);
     lastAnalysis = { payload, result };
     saveHistory(payload, result);
     saveDraft(payload);
@@ -293,6 +340,8 @@ clearButton.addEventListener("click", () => {
   evidenceNote.textContent = "";
   evidenceNote.hidden = true;
   scoreValue.textContent = "--";
+  scoreRange.textContent = "";
+  scoreRange.hidden = true;
   scoreRing.style.setProperty("--score", 0);
   signalRow.replaceChildren();
   timeline.replaceChildren();
@@ -300,6 +349,8 @@ clearButton.addEventListener("click", () => {
   experimentGrid.replaceChildren();
   experimentSection.hidden = true;
   leverSection.hidden = true;
+  comparisonSection.hidden = true;
+  comparisonGrid.replaceChildren();
   primaryResults.hidden = true;
   secondaryResults.hidden = true;
   copyMemoButton.disabled = true;
@@ -314,6 +365,7 @@ clearButton.addEventListener("click", () => {
 
 clearHistoryButton.addEventListener("click", () => {
   localStorage.removeItem(HISTORY_KEY);
+  renderComparison(null, null);
   renderHistory();
 });
 

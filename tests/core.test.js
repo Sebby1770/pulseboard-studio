@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildMemo,
+  compareResults,
   createHistoryEntry,
   migrateHistory,
   normalizePayload,
@@ -24,6 +25,7 @@ const payload = {
 
 const result = {
   score: 82,
+  scoreRange: { low: 75, high: 89, margin: 7 },
   verdict: "Green light",
   summary: "The project is ready for a focused first build.",
   metrics: { clarity: 84, feasibility: 78, momentum: 86, evidence: 60, risk: 35 },
@@ -90,6 +92,7 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   const oldResult = { ...result, metrics: { ...result.metrics } };
   delete oldResult.metrics.evidence;
   delete oldResult.evidenceGrade;
+  delete oldResult.scoreRange;
 
   const restored = migrateHistory(
     JSON.stringify([
@@ -108,6 +111,21 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   assert.equal(restored[0].payload.evidence, "idea");
   assert.equal(restored[0].result.metrics.evidence, 20);
   assert.equal(restored[0].result.evidenceGrade.label, "Early estimate");
+  assert.equal(restored[0].result.scoreRange.margin, 12);
+});
+
+test("scenario comparison treats lower risk as an improvement", () => {
+  const previous = {
+    score: 70,
+    metrics: { clarity: 80, feasibility: 70, momentum: 75, evidence: 20, risk: 70 },
+  };
+  const comparison = compareResults(previous, result);
+  const risk = comparison.metrics.find((metric) => metric.name === "risk");
+
+  assert.equal(comparison.scoreDelta, 12);
+  assert.equal(comparison.status, "improved");
+  assert.equal(risk.delta, -35);
+  assert.equal(risk.status, "improved");
 });
 
 test("drafts round-trip and malformed drafts are ignored", () => {
@@ -136,6 +154,7 @@ test("decision memo includes the lever and execution timeline", () => {
   assert.match(memo, /Remove one feature family/);
   assert.match(memo, /\*\*Validation evidence:\*\* External signals/);
   assert.match(memo, /\*\*Score confidence:\*\* Directional/);
+  assert.match(memo, /\*\*Likely score range:\*\* 75-89/);
   assert.match(memo, /## Timeline/);
   assert.match(memo, /\*\*Day 1:\*\* Define the success signal\./);
 });

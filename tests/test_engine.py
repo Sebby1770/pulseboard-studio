@@ -24,8 +24,9 @@ class EngineTests(unittest.TestCase):
         self.assertIn("api", result["signals"])
         self.assertEqual(set(result["smallestExperiment"]), {"build", "test", "success"})
         self.assertGreaterEqual(len(result["questions"]), 3)
-        self.assertEqual(result["modelVersion"], "4.0")
+        self.assertEqual(result["modelVersion"], "5.0")
         self.assertEqual(result["metrics"]["evidence"], 60)
+        self.assertEqual(set(result["scoreRange"]), {"low", "high", "margin"})
         self.assertEqual(
             set(result["recommendedLever"]),
             {"metric", "title", "action", "rationale"},
@@ -96,6 +97,8 @@ class EngineTests(unittest.TestCase):
         self.assertGreater(user_proof["score"], idea_only["score"])
         self.assertLess(user_proof["metrics"]["risk"], idea_only["metrics"]["risk"])
         self.assertEqual(user_proof["evidenceGrade"]["label"], "Evidence-backed")
+        self.assertEqual(idea_only["scoreRange"]["margin"], 12)
+        self.assertEqual(user_proof["scoreRange"]["margin"], 3)
 
     def test_risk_tolerance_does_not_change_objective_metrics(self):
         base = {

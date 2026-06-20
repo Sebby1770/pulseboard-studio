@@ -4,6 +4,29 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [0.5.0] - 2026-06-20
+
+### Added
+
+- Evidence-based score ranges with wider uncertainty for idea-only projects and tighter ranges for observed-user evidence.
+- Automatic scenario comparison after repeat analyses, including overall and per-metric deltas.
+- Risk-aware comparison semantics where lower risk is correctly shown as an improvement.
+- Likely score ranges in copied and downloaded decision memos.
+
+### Changed
+
+- Updated the scoring API model version to `5.0` and the application to `0.5.0`.
+- History restoration now compares the selected snapshot with another recent scored scenario when available.
+
+### Fixed
+
+- Stored results from earlier releases receive compatible uncertainty ranges based on their evidence metric.
+- Resetting score history now clears any stale scenario comparison from the current view.
+
+### Security
+
+- Scenario comparison only processes finite numeric metrics from validated stored results.
+
 ## [0.4.0] - 2026-06-20
 
 ### Added
@@ -93,6 +116,7 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[0.5.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.4.0
 [0.3.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.2.0

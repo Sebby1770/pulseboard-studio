@@ -105,6 +105,7 @@
             <div>
               <p class="eyebrow">Current read</p>
               <h2 id="verdict">Ready when you are</h2>
+              <p class="score-range" id="scoreRange" hidden></p>
             </div>
             <div class="score-ring" id="scoreRing">
               <span id="scoreValue">--</span>
@@ -120,6 +121,17 @@
           <div class="signal-row" id="signalRow" aria-label="Detected project signals"></div>
 
           <div class="meter-grid" id="metricGrid"></div>
+
+          <section class="comparison-section" id="comparisonSection" hidden>
+            <div class="comparison-heading">
+              <div>
+                <p class="eyebrow">Scenario comparison</p>
+                <h3 id="comparisonTitle"></h3>
+              </div>
+              <strong class="comparison-score" id="comparisonScore"></strong>
+            </div>
+            <div class="comparison-grid" id="comparisonGrid"></div>
+          </section>
 
           <section class="lever-section" id="leverSection" hidden>
             <div>
@@ -179,7 +191,7 @@
         </aside>
       </section>
       <footer class="app-footer">
-        <span>PulseBoard Studio v0.4.0</span>
+        <span>PulseBoard Studio v0.5.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>
