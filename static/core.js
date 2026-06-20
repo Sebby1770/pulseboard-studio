@@ -1,6 +1,12 @@
 export const DEFAULT_GOAL = "Ship a usable first version.";
 export const HISTORY_LIMIT = 6;
 
+const EVIDENCE_LABELS = {
+  idea: "Idea only",
+  signals: "External signals",
+  users: "Observed users",
+};
+
 const DEFAULT_LEVER = {
   metric: "Feasibility",
   title: "Keep one end-to-end workflow",
@@ -27,40 +33,59 @@ export function migrateHistory(currentRaw, legacyRaw) {
   return source.map((entry) => ({
     ...entry,
     migrated: !current.length || entry.migrated,
+    payload: entry.payload ? normalizePayload(entry.payload) : entry.payload,
     result: entry.result ? withResultDefaults(entry.result) : entry.result,
   }));
 }
 
 export function createHistoryEntry(payload, result, history, options = {}) {
+  const normalizedPayload = normalizePayload(payload);
   const previousScore = history[0]?.score;
   return {
     id: options.id || globalThis.crypto?.randomUUID?.() || `history-${Date.now()}`,
-    idea: payload.idea,
+    idea: normalizedPayload.idea,
     score: result.score,
     verdict: result.verdict,
     delta: Number.isFinite(previousScore) ? result.score - previousScore : null,
-    payload,
+    payload: normalizedPayload,
     result,
     createdAt: options.createdAt || new Date().toISOString(),
   };
 }
 
 export function serializeDraft(payload) {
-  return JSON.stringify({ version: 1, payload });
+  return JSON.stringify({ version: 2, payload: normalizePayload(payload) });
 }
 
 export function parseDraft(raw) {
   try {
     const parsed = JSON.parse(raw || "null");
-    if (parsed?.version !== 1 || !isDraftPayload(parsed.payload)) return null;
-    return parsed.payload;
+    if (![1, 2].includes(parsed?.version) || !isDraftPayload(parsed.payload)) return null;
+    return normalizePayload(parsed.payload);
   } catch {
     return null;
   }
 }
 
+export function normalizePayload(payload = {}) {
+  return {
+    idea: typeof payload.idea === "string" ? payload.idea : "",
+    goal: typeof payload.goal === "string" ? payload.goal : "",
+    deadlineDays: Number.isFinite(payload.deadlineDays) ? payload.deadlineDays : 21,
+    hoursPerWeek: Number.isFinite(payload.hoursPerWeek) ? payload.hoursPerWeek : 8,
+    confidence: Number.isFinite(payload.confidence) ? payload.confidence : 3,
+    scope: ["tiny", "focused", "ambitious"].includes(payload.scope) ? payload.scope : "focused",
+    riskAppetite: ["low", "medium", "high"].includes(payload.riskAppetite)
+      ? payload.riskAppetite
+      : "medium",
+    evidence: ["idea", "signals", "users"].includes(payload.evidence) ? payload.evidence : "idea",
+  };
+}
+
 export function buildMemo(payload, result) {
+  const normalizedPayload = normalizePayload(payload);
   const lever = result.recommendedLever || DEFAULT_LEVER;
+  const evidenceGrade = result.evidenceGrade || defaultEvidenceGrade();
   const metricRows = Object.entries(result.metrics)
     .map(([name, value]) => `- ${titleCase(name)}: ${value}`)
     .join("\n");
@@ -74,9 +99,13 @@ export function buildMemo(payload, result) {
 
 ## ${result.verdict} - ${result.score}/100
 
-**Idea:** ${payload.idea}
+**Idea:** ${normalizedPayload.idea}
 
-**First release goal:** ${payload.goal || DEFAULT_GOAL}
+**First release goal:** ${normalizedPayload.goal || DEFAULT_GOAL}
+
+**Validation evidence:** ${EVIDENCE_LABELS[normalizedPayload.evidence]}
+
+**Score confidence:** ${evidenceGrade.label} - ${evidenceGrade.detail}
 
 ${result.summary}
 
@@ -130,7 +159,16 @@ function withResultDefaults(result) {
   return {
     ...result,
     modelVersion: result.modelVersion || "2.0",
+    metrics: { ...result.metrics, evidence: result.metrics?.evidence ?? 20 },
+    evidenceGrade: result.evidenceGrade || defaultEvidenceGrade(),
     recommendedLever: result.recommendedLever || DEFAULT_LEVER,
+  };
+}
+
+function defaultEvidenceGrade() {
+  return {
+    label: "Early estimate",
+    detail: "This score is driven mostly by assumptions and planning inputs.",
   };
 }
 
@@ -144,6 +182,7 @@ function isDraftPayload(payload) {
       Number.isFinite(payload.hoursPerWeek) &&
       Number.isFinite(payload.confidence) &&
       ["tiny", "focused", "ambitious"].includes(payload.scope) &&
-      ["low", "medium", "high"].includes(payload.riskAppetite),
+      ["low", "medium", "high"].includes(payload.riskAppetite) &&
+      (payload.evidence === undefined || ["idea", "signals", "users"].includes(payload.evidence)),
   );
 }

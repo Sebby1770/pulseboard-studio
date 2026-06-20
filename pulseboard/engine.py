@@ -40,7 +40,13 @@ RISK_FACTORS = {
     "high": 3,
 }
 
-MODEL_VERSION = "3.0"
+EVIDENCE_SCORES = {
+    "idea": 20,
+    "signals": 60,
+    "users": 90,
+}
+
+MODEL_VERSION = "4.0"
 
 
 @dataclass(frozen=True)
@@ -52,6 +58,7 @@ class ProjectBrief:
     confidence: int
     scope: str
     risk_appetite: str
+    evidence: str
 
 
 def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
@@ -62,46 +69,67 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
     goal_words = _word_count(brief.goal)
     signals = _signal_hits(f"{brief.idea} {brief.goal}")
 
-    clarity = _clamp(28 + idea_words * 4 + goal_words * 5 + len(signals) * 7, 0, 100)
+    evidence = EVIDENCE_SCORES[brief.evidence]
+    clarity = _clamp(
+        25
+        + min(idea_words, 18) * 2.2
+        + min(goal_words, 10) * 3.2
+        + min(len(signals), 5) * 3,
+        0,
+        100,
+    )
     capacity = _clamp(brief.hours_per_week * 5, 0, 100)
     deadline_fit = _deadline_fit(brief.deadline_days)
     scope_drag = SCOPE_FACTORS[brief.scope] * 15
-    appetite_bonus = (RISK_FACTORS[brief.risk_appetite] - 2) * 5
 
     feasibility = _clamp(
-        52
-        + brief.confidence * 8
-        + capacity * 0.18
-        + deadline_fit * 0.22
+        48
+        + brief.confidence * 7
+        + capacity * 0.16
+        + deadline_fit * 0.20
         - scope_drag
-        + appetite_bonus,
+        + evidence * 0.08,
         0,
         100,
     )
     momentum = _clamp(
-        24
-        + brief.confidence * 10
+        20
+        + brief.confidence * 9
         + min(brief.hours_per_week, 12) * 4
-        + len(signals) * 5
-        - max(0, SCOPE_FACTORS[brief.scope] - 1) * 8,
+        + min(len(signals), 5) * 4
+        - max(0, SCOPE_FACTORS[brief.scope] - 1) * 8
+        + evidence * 0.12,
         0,
         100,
     )
     risk = _clamp(
         100
         - feasibility
-        + SCOPE_FACTORS[brief.scope] * 12
+        + SCOPE_FACTORS[brief.scope] * 11
         + max(0, 21 - brief.deadline_days) * 1.5
-        - RISK_FACTORS[brief.risk_appetite] * 4,
+        + (100 - evidence) * 0.18,
         0,
         100,
     )
-    score = round(clarity * 0.26 + feasibility * 0.34 + momentum * 0.24 + (100 - risk) * 0.16)
+    risk_tolerance_adjustment = (RISK_FACTORS[brief.risk_appetite] - 2) * 2
+    score = round(
+        _clamp(
+            clarity * 0.22
+            + feasibility * 0.28
+            + momentum * 0.20
+            + evidence * 0.14
+            + (100 - risk) * 0.16
+            + risk_tolerance_adjustment,
+            0,
+            100,
+        )
+    )
 
     metrics = {
         "clarity": round(clarity),
         "feasibility": round(feasibility),
         "momentum": round(momentum),
+        "evidence": evidence,
         "risk": round(risk),
     }
 
@@ -110,6 +138,7 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
         "score": score,
         "verdict": _verdict(score),
         "summary": _summary(brief, score),
+        "evidenceGrade": _evidence_grade(brief.evidence),
         "signals": sorted(signals),
         "metrics": metrics,
         "recommendedLever": _recommended_lever(brief, metrics),
@@ -134,10 +163,13 @@ def _coerce_payload(payload: dict[str, Any]) -> ProjectBrief:
 
     scope = str(payload.get("scope", "focused")).strip().lower()
     risk_appetite = str(payload.get("riskAppetite", "medium")).strip().lower()
+    evidence = str(payload.get("evidence", "idea")).strip().lower()
     if scope not in SCOPE_FACTORS:
         scope = "focused"
     if risk_appetite not in RISK_FACTORS:
         risk_appetite = "medium"
+    if evidence not in EVIDENCE_SCORES:
+        evidence = "idea"
 
     return ProjectBrief(
         idea=idea,
@@ -147,6 +179,7 @@ def _coerce_payload(payload: dict[str, Any]) -> ProjectBrief:
         confidence=_coerce_int(payload.get("confidence"), default=3, minimum=1, maximum=5),
         scope=scope,
         risk_appetite=risk_appetite,
+        evidence=evidence,
     )
 
 
@@ -231,6 +264,8 @@ def _next_steps(brief: ProjectBrief, score: int, signals: set[str]) -> list[str]
 
 def _risks(brief: ProjectBrief, risk: float) -> list[str]:
     risks = []
+    if brief.evidence == "idea":
+        risks.append("Score is assumption-heavy; collect one external signal before expanding the build.")
     if SCOPE_FACTORS[brief.scope] >= 3:
         risks.append("Scope is ambitious; freeze the first release around one user journey.")
     if brief.deadline_days <= 14:
@@ -298,6 +333,8 @@ def _questions(brief: ProjectBrief, signals: set[str]) -> list[str]:
         questions.insert(1, "What is the one outcome the first release must improve?")
     if brief.scope == "ambitious":
         questions.append("Which entire feature family can be removed from the first release?")
+    if brief.evidence == "idea":
+        questions.insert(1, "What is the fastest external signal that would challenge this idea?")
     return questions[:4]
 
 
@@ -306,6 +343,7 @@ def _recommended_lever(brief: ProjectBrief, metrics: dict[str, int]) -> dict[str
         "clarity": metrics["clarity"],
         "feasibility": metrics["feasibility"],
         "momentum": metrics["momentum"],
+        "evidence": metrics["evidence"],
         "risk": 100 - metrics["risk"],
     }
     weakest = min(comparable, key=comparable.get)
@@ -334,6 +372,12 @@ def _recommended_lever(brief: ProjectBrief, metrics: dict[str, int]) -> dict[str
             "action": f"Schedule one uninterrupted {min(brief.hours_per_week, 4)}-hour block and finish a visible happy path.",
             "rationale": "A concrete build block converts confidence into evidence and makes the next decision easier.",
         },
+        "evidence": {
+            "metric": "Evidence",
+            "title": "Get one external signal",
+            "action": "Show the promise or prototype to one target user and record what they actually try to do.",
+            "rationale": "External behavior is more trustworthy than adding detail to the project description.",
+        },
         "risk": {
             "metric": "Risk",
             "title": "Test the most fragile assumption",
@@ -342,3 +386,21 @@ def _recommended_lever(brief: ProjectBrief, metrics: dict[str, int]) -> dict[str
         },
     }
     return levers[weakest]
+
+
+def _evidence_grade(evidence: str) -> dict[str, str]:
+    grades = {
+        "idea": {
+            "label": "Early estimate",
+            "detail": "This score is driven mostly by assumptions and planning inputs.",
+        },
+        "signals": {
+            "label": "Directional",
+            "detail": "Some external interest exists, but user behavior is not yet proven.",
+        },
+        "users": {
+            "label": "Evidence-backed",
+            "detail": "Observed user behavior makes this score more dependable.",
+        },
+    }
+    return grades[evidence]

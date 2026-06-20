@@ -5,6 +5,7 @@ import {
   buildMemo,
   createHistoryEntry,
   migrateHistory,
+  normalizePayload,
   parseDraft,
   serializeDraft,
   titleCase,
@@ -18,13 +19,18 @@ const payload = {
   confidence: 4,
   scope: "focused",
   riskAppetite: "medium",
+  evidence: "signals",
 };
 
 const result = {
   score: 82,
   verdict: "Green light",
   summary: "The project is ready for a focused first build.",
-  metrics: { clarity: 84, feasibility: 78, momentum: 86, risk: 35 },
+  metrics: { clarity: 84, feasibility: 78, momentum: 86, evidence: 60, risk: 35 },
+  evidenceGrade: {
+    label: "Directional",
+    detail: "Some external interest exists, but user behavior is not yet proven.",
+  },
   recommendedLever: {
     metric: "Feasibility",
     title: "Remove one feature family",
@@ -78,10 +84,49 @@ test("legacy history is migrated without losing the score", () => {
   assert.equal(migrated[0].migrated, true);
 });
 
+test("v0.3 snapshots receive evidence defaults when restored", () => {
+  const oldPayload = { ...payload };
+  delete oldPayload.evidence;
+  const oldResult = { ...result, metrics: { ...result.metrics } };
+  delete oldResult.metrics.evidence;
+  delete oldResult.evidenceGrade;
+
+  const restored = migrateHistory(
+    JSON.stringify([
+      {
+        id: "v03-id",
+        idea: oldPayload.idea,
+        score: oldResult.score,
+        verdict: oldResult.verdict,
+        payload: oldPayload,
+        result: oldResult,
+      },
+    ]),
+    null,
+  );
+
+  assert.equal(restored[0].payload.evidence, "idea");
+  assert.equal(restored[0].result.metrics.evidence, 20);
+  assert.equal(restored[0].result.evidenceGrade.label, "Early estimate");
+});
+
 test("drafts round-trip and malformed drafts are ignored", () => {
   assert.deepEqual(parseDraft(serializeDraft(payload)), payload);
-  assert.equal(parseDraft('{"version":2}'), null);
+  assert.equal(parseDraft('{"version":3}'), null);
   assert.equal(parseDraft("not json"), null);
+});
+
+test("v1 drafts gain the safe idea-only evidence default", () => {
+  const oldPayload = { ...payload };
+  delete oldPayload.evidence;
+  const migrated = parseDraft(JSON.stringify({ version: 1, payload: oldPayload }));
+
+  assert.equal(migrated.evidence, "idea");
+});
+
+test("payload normalization preserves valid evidence and defaults missing evidence", () => {
+  assert.equal(normalizePayload(payload).evidence, "signals");
+  assert.equal(normalizePayload({ ...payload, evidence: undefined }).evidence, "idea");
 });
 
 test("decision memo includes the lever and execution timeline", () => {
@@ -89,6 +134,8 @@ test("decision memo includes the lever and execution timeline", () => {
 
   assert.match(memo, /## Best Lever/);
   assert.match(memo, /Remove one feature family/);
+  assert.match(memo, /\*\*Validation evidence:\*\* External signals/);
+  assert.match(memo, /\*\*Score confidence:\*\* Directional/);
   assert.match(memo, /## Timeline/);
   assert.match(memo, /\*\*Day 1:\*\* Define the success signal\./);
 });

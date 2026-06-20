@@ -68,13 +68,25 @@
             <label for="scopeAmbitious">Ambitious</label>
           </div>
 
-          <div class="segmented" aria-label="Risk appetite">
+          <div class="segmented" aria-label="Risk tolerance">
             <input type="radio" id="riskLow" name="riskAppetite" value="low" />
-            <label for="riskLow">Low risk</label>
+            <label for="riskLow">Cautious</label>
             <input type="radio" id="riskMedium" name="riskAppetite" value="medium" checked />
             <label for="riskMedium">Balanced</label>
             <input type="radio" id="riskHigh" name="riskAppetite" value="high" />
             <label for="riskHigh">Bold</label>
+          </div>
+
+          <div class="evidence-control">
+            <p class="control-label" id="evidenceLabel">Validation evidence</p>
+            <div class="segmented" aria-labelledby="evidenceLabel">
+              <input type="radio" id="evidenceIdea" name="evidence" value="idea" checked />
+              <label for="evidenceIdea">Idea only</label>
+              <input type="radio" id="evidenceSignals" name="evidence" value="signals" />
+              <label for="evidenceSignals">Signals</label>
+              <input type="radio" id="evidenceUsers" name="evidence" value="users" />
+              <label for="evidenceUsers">User proof</label>
+            </div>
           </div>
 
           <div class="button-row">
@@ -100,8 +112,10 @@
           </div>
 
           <p class="summary" id="summary">
-            Add a project idea and PulseBoard will score clarity, feasibility, momentum, and risk.
+            Add a project idea and PulseBoard will score clarity, feasibility, momentum, evidence, and risk.
           </p>
+
+          <p class="evidence-note" id="evidenceNote" hidden></p>
 
           <div class="signal-row" id="signalRow" aria-label="Detected project signals"></div>
 
@@ -165,7 +179,7 @@
         </aside>
       </section>
       <footer class="app-footer">
-        <span>PulseBoard Studio v0.3.0</span>
+        <span>PulseBoard Studio v0.4.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>

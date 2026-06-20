@@ -4,6 +4,32 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [0.4.0] - 2026-06-20
+
+### Added
+
+- Validation evidence input with idea-only, external-signal, and observed-user levels.
+- Evidence as a first-class score metric and best-lever recommendation target.
+- Score-confidence labels explaining whether a result is early, directional, or evidence-backed.
+- Evidence context in downloadable and copyable decision memos.
+
+### Changed
+
+- Capped word-count contributions so verbose descriptions cannot keep inflating clarity.
+- Risk tolerance now adjusts decision fit slightly without changing objective feasibility or risk metrics.
+- Positive metrics use teal bars, evidence uses amber, and risk uses coral for clearer semantics.
+- Updated the scoring model to `4.0` and the application to `0.4.0`.
+
+### Fixed
+
+- Removed the previous behavior where choosing a bold risk appetite made the project appear objectively safer.
+- Older drafts and history snapshots now receive a safe `idea` evidence default when restored.
+- Stored v0.3 results gain compatible evidence metrics and score-confidence labels.
+
+### Security
+
+- Evidence values are allow-listed in both Python request handling and browser persistence parsing.
+
 ## [0.3.0] - 2026-06-19
 
 ### Added
@@ -67,6 +93,7 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[0.4.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.4.0
 [0.3.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.3.0
 [0.2.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Sebby1770/pulseboard-studio/commits/51a84c8

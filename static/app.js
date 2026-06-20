@@ -3,6 +3,7 @@ import {
   buildMemo,
   createHistoryEntry,
   migrateHistory,
+  normalizePayload,
   parseDraft,
   parseHistory,
   serializeDraft,
@@ -13,6 +14,7 @@ const form = document.querySelector("#projectForm");
 const apiStatus = document.querySelector("#apiStatus");
 const verdict = document.querySelector("#verdict");
 const summary = document.querySelector("#summary");
+const evidenceNote = document.querySelector("#evidenceNote");
 const scoreRing = document.querySelector("#scoreRing");
 const scoreValue = document.querySelector("#scoreValue");
 const metricGrid = document.querySelector("#metricGrid");
@@ -55,6 +57,7 @@ const sampleProject = {
   confidence: 4,
   scope: "focused",
   riskAppetite: "medium",
+  evidence: "signals",
 };
 
 function formPayload() {
@@ -67,6 +70,7 @@ function formPayload() {
     confidence: Number(data.get("confidence")),
     scope: data.get("scope"),
     riskAppetite: data.get("riskAppetite"),
+    evidence: data.get("evidence"),
   };
 }
 
@@ -93,6 +97,8 @@ async function scoreProject(payload) {
 function renderResult(result) {
   verdict.textContent = result.verdict;
   summary.textContent = result.summary;
+  evidenceNote.textContent = `${result.evidenceGrade.label}: ${result.evidenceGrade.detail}`;
+  evidenceNote.hidden = false;
   scoreValue.textContent = result.score;
   scoreRing.style.setProperty("--score", result.score);
 
@@ -108,6 +114,7 @@ function renderResult(result) {
     ...Object.entries(result.metrics).map(([name, value]) => {
       const item = document.createElement("div");
       item.className = "metric";
+      item.dataset.metric = name;
       const label = document.createElement("span");
       const number = document.createElement("strong");
       const meter = document.createElement("div");
@@ -235,14 +242,16 @@ function renderHistory() {
 }
 
 function applyPayload(payload) {
-  form.idea.value = payload.idea;
-  form.goal.value = payload.goal;
-  form.deadlineDays.value = payload.deadlineDays;
-  form.hoursPerWeek.value = payload.hoursPerWeek;
-  form.confidence.value = payload.confidence;
-  confidenceValue.textContent = payload.confidence;
-  form.querySelector(`[name="scope"][value="${payload.scope}"]`).checked = true;
-  form.querySelector(`[name="riskAppetite"][value="${payload.riskAppetite}"]`).checked = true;
+  const normalized = normalizePayload(payload);
+  form.idea.value = normalized.idea;
+  form.goal.value = normalized.goal;
+  form.deadlineDays.value = normalized.deadlineDays;
+  form.hoursPerWeek.value = normalized.hoursPerWeek;
+  form.confidence.value = normalized.confidence;
+  confidenceValue.textContent = normalized.confidence;
+  form.querySelector(`[name="scope"][value="${normalized.scope}"]`).checked = true;
+  form.querySelector(`[name="riskAppetite"][value="${normalized.riskAppetite}"]`).checked = true;
+  form.querySelector(`[name="evidence"][value="${normalized.evidence}"]`).checked = true;
 }
 
 form.addEventListener("submit", async (event) => {
@@ -279,7 +288,10 @@ clearButton.addEventListener("click", () => {
   nextSteps.replaceChildren();
   risks.replaceChildren();
   verdict.textContent = "Ready when you are";
-  summary.textContent = "Add a project idea and PulseBoard will score clarity, feasibility, momentum, and risk.";
+  summary.textContent =
+    "Add a project idea and PulseBoard will score clarity, feasibility, momentum, evidence, and risk.";
+  evidenceNote.textContent = "";
+  evidenceNote.hidden = true;
   scoreValue.textContent = "--";
   scoreRing.style.setProperty("--score", 0);
   signalRow.replaceChildren();

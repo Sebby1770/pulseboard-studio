@@ -208,6 +208,17 @@ input[type="range"] {
   accent-color: var(--teal);
 }
 
+.evidence-control {
+  display: grid;
+  gap: 8px;
+}
+
+.control-label {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
 .segmented {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -342,9 +353,18 @@ input[type="range"] {
   font-weight: 800;
 }
 
+.evidence-note {
+  margin: -6px 0 16px;
+  border-left: 3px solid var(--amber);
+  padding-left: 11px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .meter-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
   min-height: 84px;
 }
@@ -419,7 +439,15 @@ input[type="range"] {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--teal), var(--amber), var(--coral));
+  background: var(--teal);
+}
+
+.metric[data-metric="evidence"] .meter i {
+  background: var(--amber);
+}
+
+.metric[data-metric="risk"] .meter i {
+  background: var(--coral);
 }
 
 .result-columns {
