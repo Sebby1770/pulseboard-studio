@@ -317,6 +317,26 @@ input[type="range"] {
   font-weight: 750;
 }
 
+.score-tools {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.score-tools button {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 0.76rem;
+}
+
+.score-tools button[data-state="set"] {
+  border-color: rgba(46, 125, 50, 0.3);
+  background: rgba(46, 125, 50, 0.08);
+  color: var(--green);
+  cursor: default;
+  opacity: 1;
+}
+
 .score-ring {
   --score: 0;
   width: 112px;
@@ -394,6 +414,13 @@ input[type="range"] {
 .comparison-heading h3 {
   margin-bottom: 0;
   font-size: 1.2rem;
+}
+
+.comparison-context {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 750;
 }
 
 .comparison-score {

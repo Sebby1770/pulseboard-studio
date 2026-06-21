@@ -1,14 +1,17 @@
 import {
   HISTORY_LIMIT,
+  baselineControlState,
   buildMemo,
   buildShareUrl,
   compareResults,
   createHistoryEntry,
   migrateHistory,
   normalizePayload,
+  parseBaseline,
   parseDraft,
   parseHistory,
   parseShareUrl,
+  serializeBaseline,
   serializeDraft,
   titleCase,
 } from "./core.js";
@@ -38,6 +41,7 @@ const leverAction = document.querySelector("#leverAction");
 const leverRationale = document.querySelector("#leverRationale");
 const comparisonSection = document.querySelector("#comparisonSection");
 const comparisonTitle = document.querySelector("#comparisonTitle");
+const comparisonContext = document.querySelector("#comparisonContext");
 const comparisonScore = document.querySelector("#comparisonScore");
 const comparisonGrid = document.querySelector("#comparisonGrid");
 const historyList = document.querySelector("#historyList");
@@ -49,12 +53,14 @@ const confidenceValue = document.querySelector("#confidenceValue");
 const copyMemoButton = document.querySelector("#copyMemoButton");
 const downloadMemoButton = document.querySelector("#downloadMemoButton");
 const shareLinkButton = document.querySelector("#shareLinkButton");
+const baselineButton = document.querySelector("#baselineButton");
 const draftStatus = document.querySelector("#draftStatus");
 const formError = document.querySelector("#formError");
 
 const HISTORY_KEY = "pulseboard.history.v2";
 const LEGACY_HISTORY_KEY = "pulseboard.history.v1";
 const DRAFT_KEY = "pulseboard.draft.v1";
+const BASELINE_KEY = "pulseboard.baseline.v1";
 let lastAnalysis = null;
 let draftTimer = null;
 
@@ -180,13 +186,17 @@ function renderResult(result) {
   copyMemoButton.disabled = false;
   downloadMemoButton.disabled = false;
   shareLinkButton.disabled = false;
+  updateBaselineButton(result);
 }
 
-function renderComparison(previous, current) {
+function renderComparison(previous, current, context = "") {
+  if (context === "Pinned baseline" && resultsMatch(previous, current)) previous = null;
   const comparison = compareResults(previous, current);
   if (!comparison) {
     comparisonSection.hidden = true;
     comparisonGrid.replaceChildren();
+    comparisonContext.textContent = "";
+    comparisonContext.hidden = true;
     return null;
   }
 
@@ -196,6 +206,8 @@ function renderComparison(previous, current) {
     stable: "The overall score is unchanged",
   };
   comparisonTitle.textContent = titles[comparison.status];
+  comparisonContext.textContent = context;
+  comparisonContext.hidden = !context;
   comparisonScore.textContent = `${comparison.scoreDelta > 0 ? "+" : ""}${comparison.scoreDelta}`;
   comparisonScore.dataset.status = comparison.status;
   comparisonGrid.replaceChildren(
@@ -213,6 +225,7 @@ function renderComparison(previous, current) {
     }),
   );
   comparisonSection.hidden = false;
+  comparison.context = context;
   return comparison;
 }
 
@@ -244,6 +257,36 @@ function loadHistory() {
   return history;
 }
 
+function loadBaseline() {
+  return parseBaseline(localStorage.getItem(BASELINE_KEY));
+}
+
+function comparisonTarget(fallbackResult) {
+  const baseline = loadBaseline();
+  if (baseline) return { result: baseline.result, context: "Pinned baseline" };
+  return fallbackResult
+    ? { result: fallbackResult, context: "Previous score" }
+    : { result: null, context: "" };
+}
+
+function updateBaselineButton(result) {
+  const baseline = loadBaseline();
+  const state = baselineControlState(baseline, result);
+  baselineButton.textContent = state.label;
+  baselineButton.disabled = state.disabled;
+  if (result) baselineButton.dataset.state = state.isCurrent ? "set" : "ready";
+  else delete baselineButton.dataset.state;
+}
+
+function resultsMatch(previous, current) {
+  const comparison = compareResults(previous, current);
+  return Boolean(
+    comparison &&
+      comparison.scoreDelta === 0 &&
+      comparison.metrics.every((metric) => metric.delta === 0),
+  );
+}
+
 function renderHistory() {
   const history = loadHistory();
   if (!history.length) {
@@ -272,12 +315,13 @@ function renderHistory() {
       button.append(score, verdictText, idea, delta);
       button.addEventListener("click", () => {
         if (entry.payload && entry.result) {
-          const comparisonBase = history.find(
+          const fallbackResult = history.find(
             (candidate) => candidate.id !== entry.id && candidate.result,
           )?.result;
+          const target = comparisonTarget(fallbackResult);
           applyPayload(entry.payload);
           renderResult(entry.result);
-          const comparison = renderComparison(comparisonBase, entry.result);
+          const comparison = renderComparison(target.result, entry.result, target.context);
           lastAnalysis = { payload: entry.payload, result: entry.result, comparison };
           saveDraft(entry.payload, "Draft restored");
           setStatus("Snapshot restored", "ok");
@@ -308,13 +352,14 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const payload = formPayload();
   const previousResult = loadHistory().find((entry) => entry.result)?.result;
+  const target = comparisonTarget(previousResult);
   setFormError("");
   setStatus("Scoring", "busy");
   form.querySelector(".primary-action").disabled = true;
   try {
     const result = await scoreProject(payload);
     renderResult(result);
-    const comparison = renderComparison(previousResult, result);
+    const comparison = renderComparison(target.result, result, target.context);
     lastAnalysis = { payload, result, comparison };
     saveHistory(payload, result);
     saveDraft(payload);
@@ -356,6 +401,8 @@ clearButton.addEventListener("click", () => {
   leverSection.hidden = true;
   comparisonSection.hidden = true;
   comparisonGrid.replaceChildren();
+  comparisonContext.textContent = "";
+  comparisonContext.hidden = true;
   primaryResults.hidden = true;
   secondaryResults.hidden = true;
   copyMemoButton.disabled = true;
@@ -363,6 +410,7 @@ clearButton.addEventListener("click", () => {
   shareLinkButton.disabled = true;
   confidenceValue.textContent = confidence.value;
   lastAnalysis = null;
+  updateBaselineButton(null);
   localStorage.removeItem(DRAFT_KEY);
   window.history.replaceState(null, "", window.location.pathname);
   draftStatus.textContent = "";
@@ -372,8 +420,10 @@ clearButton.addEventListener("click", () => {
 
 clearHistoryButton.addEventListener("click", () => {
   localStorage.removeItem(HISTORY_KEY);
+  localStorage.removeItem(BASELINE_KEY);
   renderComparison(null, null);
   if (lastAnalysis) lastAnalysis.comparison = null;
+  updateBaselineButton(lastAnalysis?.result);
   renderHistory();
 });
 
@@ -424,6 +474,18 @@ shareLinkButton.addEventListener("click", async () => {
   }
 });
 
+baselineButton.addEventListener("click", () => {
+  if (!lastAnalysis) return;
+  localStorage.setItem(
+    BASELINE_KEY,
+    serializeBaseline(lastAnalysis.payload, lastAnalysis.result),
+  );
+  renderComparison(null, null);
+  lastAnalysis.comparison = null;
+  updateBaselineButton(lastAnalysis.result);
+  setStatus("Baseline set", "ok");
+});
+
 function scheduleDraftSave() {
   window.clearTimeout(draftTimer);
   draftStatus.textContent = "Saving draft";
@@ -452,6 +514,7 @@ function restoreSharedScenario() {
   if (!shared) return false;
   applyPayload(shared);
   saveDraft(shared, "Shared scenario loaded");
+  window.history.replaceState(null, "", buildShareUrl(shared, window.location.href));
   setStatus("Scenario loaded", "ok");
   return true;
 }

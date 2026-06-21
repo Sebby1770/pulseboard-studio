@@ -107,8 +107,11 @@
               <h2 id="verdict">Ready when you are</h2>
               <p class="score-range" id="scoreRange" hidden></p>
             </div>
-            <div class="score-ring" id="scoreRing">
-              <span id="scoreValue">--</span>
+            <div class="score-tools">
+              <div class="score-ring" id="scoreRing">
+                <span id="scoreValue">--</span>
+              </div>
+              <button type="button" id="baselineButton" disabled>Set baseline</button>
             </div>
           </div>
 
@@ -127,6 +130,7 @@
               <div>
                 <p class="eyebrow">Scenario comparison</p>
                 <h3 id="comparisonTitle"></h3>
+                <p class="comparison-context" id="comparisonContext" hidden></p>
               </div>
               <strong class="comparison-score" id="comparisonScore"></strong>
             </div>
@@ -192,7 +196,7 @@
         </aside>
       </section>
       <footer class="app-footer">
-        <span>PulseBoard Studio v0.6.0</span>
+        <span>PulseBoard Studio v0.7.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>

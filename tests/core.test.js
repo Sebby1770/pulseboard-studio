@@ -2,14 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  baselineControlState,
   buildMemo,
   buildShareUrl,
   compareResults,
   createHistoryEntry,
   migrateHistory,
   normalizePayload,
+  parseBaseline,
   parseDraft,
   parseShareUrl,
+  serializeBaseline,
   serializeDraft,
   titleCase,
 } from "../static/core.js";
@@ -149,14 +152,31 @@ test("payload normalization preserves valid evidence and defaults missing eviden
   assert.equal(normalizePayload({ ...payload, evidence: undefined }).evidence, "idea");
 });
 
-test("share links round-trip normalized scenario inputs", () => {
+test("share links keep normalized scenario inputs in the URL fragment", () => {
   const url = buildShareUrl(payload, "https://example.com/studio?old=value#results");
   const parsed = parseShareUrl(url);
+  const sharedUrl = new URL(url);
+  const fragment = new URLSearchParams(sharedUrl.hash.slice(1));
 
   assert.deepEqual(parsed, payload);
-  assert.equal(new URL(url).searchParams.get("v"), "1");
-  assert.equal(new URL(url).hash, "");
-  assert.equal(new URL(url).searchParams.has("old"), false);
+  assert.equal(fragment.get("v"), "2");
+  assert.equal(fragment.get("idea"), payload.idea);
+  assert.equal(sharedUrl.search, "");
+});
+
+test("v0.6 query-string share links remain compatible", () => {
+  const legacyUrl = new URL("https://example.com/studio");
+  legacyUrl.searchParams.set("v", "1");
+  legacyUrl.searchParams.set("idea", payload.idea);
+  legacyUrl.searchParams.set("goal", payload.goal);
+  legacyUrl.searchParams.set("deadline", String(payload.deadlineDays));
+  legacyUrl.searchParams.set("hours", String(payload.hoursPerWeek));
+  legacyUrl.searchParams.set("confidence", String(payload.confidence));
+  legacyUrl.searchParams.set("scope", payload.scope);
+  legacyUrl.searchParams.set("risk", payload.riskAppetite);
+  legacyUrl.searchParams.set("evidence", payload.evidence);
+
+  assert.deepEqual(parseShareUrl(legacyUrl), payload);
 });
 
 test("shared inputs are allow-listed, clamped, and stripped of null bytes", () => {
@@ -185,6 +205,43 @@ test("shared inputs are allow-listed, clamped, and stripped of null bytes", () =
   assert.equal(parseShareUrl("javascript:alert(1)"), null);
 });
 
+test("baselines store only normalized inputs and comparable metrics", () => {
+  const baseline = parseBaseline(serializeBaseline(payload, result));
+
+  assert.deepEqual(baseline.payload, payload);
+  assert.deepEqual(baseline.result, {
+    score: 82,
+    metrics: { clarity: 84, feasibility: 78, momentum: 86, evidence: 60, risk: 35 },
+  });
+  assert.equal(baseline.result.summary, undefined);
+});
+
+test("malformed or out-of-range baselines are rejected", () => {
+  const invalid = JSON.stringify({
+    version: 1,
+    payload,
+    result: { score: 82, metrics: { ...result.metrics, risk: 900 } },
+  });
+
+  assert.equal(parseBaseline(invalid), null);
+  assert.equal(parseBaseline("not json"), null);
+});
+
+test("baseline controls reset cleanly when stored state is removed", () => {
+  const baseline = parseBaseline(serializeBaseline(payload, result));
+
+  assert.deepEqual(baselineControlState(baseline, result), {
+    label: "Baseline set",
+    disabled: true,
+    isCurrent: true,
+  });
+  assert.deepEqual(baselineControlState(null, null), {
+    label: "Set baseline",
+    disabled: true,
+    isCurrent: false,
+  });
+});
+
 test("decision memo includes the lever and execution timeline", () => {
   const memo = buildMemo(payload, result);
 
@@ -202,9 +259,12 @@ test("decision memo carries scenario comparison context", () => {
     score: 70,
     metrics: { clarity: 80, feasibility: 70, momentum: 75, evidence: 20, risk: 70 },
   };
-  const memo = buildMemo(payload, result, compareResults(previous, result));
+  const comparison = compareResults(previous, result);
+  comparison.context = "Pinned baseline";
+  const memo = buildMemo(payload, result, comparison);
 
   assert.match(memo, /## Scenario Comparison/);
+  assert.match(memo, /\*\*Compared with:\*\* Pinned baseline/);
   assert.match(memo, /Overall score: \+12 \(Improved\)/);
   assert.match(memo, /Risk: -35 \(Improved; lower is better\)/);
 });

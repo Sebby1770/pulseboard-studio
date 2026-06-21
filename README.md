@@ -4,11 +4,13 @@ PulseBoard Studio is a small Python and JavaScript app for scoring project ideas
 
 The browser UI collects a project brief, calls a Python API, and renders a score, risks, and a practical next-step plan. It is designed to run locally with the Python standard library and to deploy cleanly on Vercel as static files plus a Python serverless function.
 
-Version 0.6 adds portable scenario links, stricter restored-input normalization, and comparison context in decision memos. See [CHANGELOG.md](CHANGELOG.md) for release history.
+Version 0.7 adds private-by-default fragment links and pinned comparison baselines for deliberate what-if analysis. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
-After an analysis, use **Share link** to copy a URL containing the project brief. Opening that link restores the scenario inputs and runs no untrusted result data; the recipient can analyze it against the current Python scoring model.
+After an analysis, use **Share link** to copy a URL containing the project brief. Scenario data lives after the URL `#`, so it is restored in the browser without being included in the initial HTTP request. The recipient can then analyze it against the current Python scoring model.
 
-Shared briefs appear in the URL and may be retained in browser history or server logs. Do not include passwords, API keys, customer records, or other secrets.
+Shared briefs remain visible in the URL and may be retained in browser history. Do not include passwords, API keys, customer records, or other secrets.
+
+Use **Set baseline** on any scored scenario to pin it. Later analyses compare against that result until the baseline is updated or score history is reset; exported memos identify when a pinned baseline was used.
 
 ## Stack
 
@@ -18,7 +20,8 @@ Shared briefs appear in the URL and may be retained in browser history or server
 - Python and JavaScript unit tests
 - GitHub Actions CI
 - Vercel-ready `api/score.py` and `vercel.json`
-- Shareable, URL-encoded scenarios with allow-listed inputs
+- Fragment-based share scenarios with allow-listed inputs and legacy-link migration
+- Persistent, validated comparison baselines
 
 ## Run Locally
 

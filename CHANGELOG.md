@@ -4,6 +4,31 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [0.7.0] - 2026-06-21
+
+### Added
+
+- A persistent baseline control for intentional what-if comparisons across multiple analyses.
+- Comparison-source labels in the interface and exported decision memos.
+- Focused tests for baseline validation, fragment links, and legacy share-link compatibility.
+
+### Changed
+
+- Share links now store scenario data in the URL fragment instead of the query string.
+- Baselines retain only normalized inputs, the overall score, and the five bounded numeric metrics.
+- Updated the application to `0.7.0`.
+
+### Fixed
+
+- Opening a v0.6 query-string link now restores the scenario and rewrites the address to the safer fragment format.
+- Comparing a scenario with its own pinned baseline no longer shows a meaningless zero-delta panel.
+- Resetting score history also resets the associated baseline and exported comparison context.
+
+### Security
+
+- Fragment-based scenario data is not included in HTTP requests or ordinary server access logs.
+- Tampered baseline data is rejected unless its score and all expected metrics are finite values from 0 to 100.
+
 ## [0.6.0] - 2026-06-21
 
 ### Added
@@ -141,6 +166,7 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[0.7.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.5.0
 [0.4.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.4.0

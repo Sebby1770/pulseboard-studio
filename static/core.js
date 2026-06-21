@@ -7,6 +7,8 @@ const EVIDENCE_LABELS = {
   users: "Observed users",
 };
 
+const COMPARISON_METRICS = ["clarity", "feasibility", "momentum", "evidence", "risk"];
+
 const DEFAULT_LEVER = {
   metric: "Feasibility",
   title: "Keep one end-to-end workflow",
@@ -75,6 +77,20 @@ export function compareResults(previous, current) {
   };
 }
 
+export function baselineControlState(baseline, current) {
+  const comparison = compareResults(baseline?.result, current);
+  const isCurrent = Boolean(
+    comparison &&
+      comparison.scoreDelta === 0 &&
+      comparison.metrics.every((metric) => metric.delta === 0),
+  );
+  return {
+    label: isCurrent ? "Baseline set" : baseline ? "Update baseline" : "Set baseline",
+    disabled: !current || isCurrent,
+    isCurrent,
+  };
+}
+
 export function serializeDraft(payload) {
   return JSON.stringify({ version: 2, payload: normalizePayload(payload) });
 }
@@ -84,6 +100,27 @@ export function parseDraft(raw) {
     const parsed = JSON.parse(raw || "null");
     if (![1, 2].includes(parsed?.version) || !isDraftPayload(parsed.payload)) return null;
     return normalizePayload(parsed.payload);
+  } catch {
+    return null;
+  }
+}
+
+export function serializeBaseline(payload, result) {
+  const comparableResult = normalizeComparableResult(result);
+  if (!comparableResult) throw new TypeError("Baseline results must contain valid score metrics.");
+  return JSON.stringify({
+    version: 1,
+    payload: normalizePayload(payload),
+    result: comparableResult,
+  });
+}
+
+export function parseBaseline(raw) {
+  try {
+    const parsed = JSON.parse(raw || "null");
+    const result = normalizeComparableResult(parsed?.result);
+    if (parsed?.version !== 1 || !isDraftPayload(parsed.payload) || !result) return null;
+    return { payload: normalizePayload(parsed.payload), result };
   } catch {
     return null;
   }
@@ -112,32 +149,35 @@ export function buildShareUrl(payload, baseUrl) {
   }
 
   url.search = "";
-  url.hash = "";
-  url.searchParams.set("v", "1");
-  url.searchParams.set("idea", normalized.idea);
-  url.searchParams.set("goal", normalized.goal);
-  url.searchParams.set("deadline", String(normalized.deadlineDays));
-  url.searchParams.set("hours", String(normalized.hoursPerWeek));
-  url.searchParams.set("confidence", String(normalized.confidence));
-  url.searchParams.set("scope", normalized.scope);
-  url.searchParams.set("risk", normalized.riskAppetite);
-  url.searchParams.set("evidence", normalized.evidence);
+  const params = new URLSearchParams();
+  params.set("v", "2");
+  params.set("idea", normalized.idea);
+  params.set("goal", normalized.goal);
+  params.set("deadline", String(normalized.deadlineDays));
+  params.set("hours", String(normalized.hoursPerWeek));
+  params.set("confidence", String(normalized.confidence));
+  params.set("scope", normalized.scope);
+  params.set("risk", normalized.riskAppetite);
+  params.set("evidence", normalized.evidence);
+  url.hash = params.toString();
   return url.toString();
 }
 
 export function parseShareUrl(value) {
   try {
     const url = new URL(value);
-    if (!["http:", "https:"].includes(url.protocol) || !url.searchParams.has("idea")) return null;
+    const fragmentParams = new URLSearchParams(url.hash.slice(1));
+    const params = fragmentParams.has("idea") ? fragmentParams : url.searchParams;
+    if (!["http:", "https:"].includes(url.protocol) || !params.has("idea")) return null;
     const payload = normalizePayload({
-      idea: url.searchParams.get("idea"),
-      goal: url.searchParams.get("goal"),
-      deadlineDays: numberParam(url.searchParams, "deadline"),
-      hoursPerWeek: numberParam(url.searchParams, "hours"),
-      confidence: numberParam(url.searchParams, "confidence"),
-      scope: url.searchParams.get("scope"),
-      riskAppetite: url.searchParams.get("risk"),
-      evidence: url.searchParams.get("evidence"),
+      idea: params.get("idea"),
+      goal: params.get("goal"),
+      deadlineDays: numberParam(params, "deadline"),
+      hoursPerWeek: numberParam(params, "hours"),
+      confidence: numberParam(params, "confidence"),
+      scope: params.get("scope"),
+      riskAppetite: params.get("risk"),
+      evidence: params.get("evidence"),
     });
     return payload.idea ? payload : null;
   } catch {
@@ -218,6 +258,7 @@ function buildComparisonBlock(comparison) {
     return "";
   }
   const scoreDelta = formatDelta(comparison.scoreDelta);
+  const context = comparison.context ? `**Compared with:** ${comparison.context}\n\n` : "";
   const rows = comparison.metrics
     .filter((metric) => Number.isFinite(metric.delta))
     .map((metric) => {
@@ -227,6 +268,7 @@ function buildComparisonBlock(comparison) {
     .join("\n");
   return `## Scenario Comparison
 
+${context}
 - Overall score: ${scoreDelta} (${titleCase(comparison.status)})
 ${rows}
 
@@ -250,6 +292,17 @@ function numberParam(params, name) {
 
 function formatDelta(value) {
   return value > 0 ? `+${value}` : String(value);
+}
+
+function normalizeComparableResult(result) {
+  if (!Number.isFinite(result?.score) || result.score < 0 || result.score > 100) return null;
+  const metrics = {};
+  for (const name of COMPARISON_METRICS) {
+    const value = result.metrics?.[name];
+    if (!Number.isFinite(value) || value < 0 || value > 100) return null;
+    metrics[name] = Math.round(value);
+  }
+  return { score: Math.round(result.score), metrics };
 }
 
 function isHistoryEntry(entry) {
