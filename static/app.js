@@ -1,12 +1,14 @@
 import {
   HISTORY_LIMIT,
   buildMemo,
+  buildShareUrl,
   compareResults,
   createHistoryEntry,
   migrateHistory,
   normalizePayload,
   parseDraft,
   parseHistory,
+  parseShareUrl,
   serializeDraft,
   titleCase,
 } from "./core.js";
@@ -46,6 +48,7 @@ const confidence = document.querySelector("#confidence");
 const confidenceValue = document.querySelector("#confidenceValue");
 const copyMemoButton = document.querySelector("#copyMemoButton");
 const downloadMemoButton = document.querySelector("#downloadMemoButton");
+const shareLinkButton = document.querySelector("#shareLinkButton");
 const draftStatus = document.querySelector("#draftStatus");
 const formError = document.querySelector("#formError");
 
@@ -68,7 +71,7 @@ const sampleProject = {
 
 function formPayload() {
   const data = new FormData(form);
-  return {
+  return normalizePayload({
     idea: data.get("idea"),
     goal: data.get("goal"),
     deadlineDays: Number(data.get("deadlineDays")),
@@ -77,7 +80,7 @@ function formPayload() {
     scope: data.get("scope"),
     riskAppetite: data.get("riskAppetite"),
     evidence: data.get("evidence"),
-  };
+  });
 }
 
 async function scoreProject(payload) {
@@ -176,6 +179,7 @@ function renderResult(result) {
   secondaryResults.hidden = false;
   copyMemoButton.disabled = false;
   downloadMemoButton.disabled = false;
+  shareLinkButton.disabled = false;
 }
 
 function renderComparison(previous, current) {
@@ -183,7 +187,7 @@ function renderComparison(previous, current) {
   if (!comparison) {
     comparisonSection.hidden = true;
     comparisonGrid.replaceChildren();
-    return;
+    return null;
   }
 
   const titles = {
@@ -209,6 +213,7 @@ function renderComparison(previous, current) {
     }),
   );
   comparisonSection.hidden = false;
+  return comparison;
 }
 
 function listItem(text) {
@@ -272,8 +277,8 @@ function renderHistory() {
           )?.result;
           applyPayload(entry.payload);
           renderResult(entry.result);
-          renderComparison(comparisonBase, entry.result);
-          lastAnalysis = { payload: entry.payload, result: entry.result };
+          const comparison = renderComparison(comparisonBase, entry.result);
+          lastAnalysis = { payload: entry.payload, result: entry.result, comparison };
           saveDraft(entry.payload, "Draft restored");
           setStatus("Snapshot restored", "ok");
         } else {
@@ -309,8 +314,8 @@ form.addEventListener("submit", async (event) => {
   try {
     const result = await scoreProject(payload);
     renderResult(result);
-    renderComparison(previousResult, result);
-    lastAnalysis = { payload, result };
+    const comparison = renderComparison(previousResult, result);
+    lastAnalysis = { payload, result, comparison };
     saveHistory(payload, result);
     saveDraft(payload);
     setStatus("API ok", "ok");
@@ -355,9 +360,11 @@ clearButton.addEventListener("click", () => {
   secondaryResults.hidden = true;
   copyMemoButton.disabled = true;
   downloadMemoButton.disabled = true;
+  shareLinkButton.disabled = true;
   confidenceValue.textContent = confidence.value;
   lastAnalysis = null;
   localStorage.removeItem(DRAFT_KEY);
+  window.history.replaceState(null, "", window.location.pathname);
   draftStatus.textContent = "";
   setFormError("");
   setStatus("API idle");
@@ -366,6 +373,7 @@ clearButton.addEventListener("click", () => {
 clearHistoryButton.addEventListener("click", () => {
   localStorage.removeItem(HISTORY_KEY);
   renderComparison(null, null);
+  if (lastAnalysis) lastAnalysis.comparison = null;
   renderHistory();
 });
 
@@ -379,7 +387,9 @@ form.addEventListener("change", scheduleDraftSave);
 copyMemoButton.addEventListener("click", async () => {
   if (!lastAnalysis) return;
   try {
-    await navigator.clipboard.writeText(buildMemo(lastAnalysis.payload, lastAnalysis.result));
+    await navigator.clipboard.writeText(
+      buildMemo(lastAnalysis.payload, lastAnalysis.result, lastAnalysis.comparison),
+    );
     setStatus("Memo copied", "ok");
   } catch {
     setStatus("Copy unavailable", "error");
@@ -388,9 +398,12 @@ copyMemoButton.addEventListener("click", async () => {
 
 downloadMemoButton.addEventListener("click", () => {
   if (!lastAnalysis) return;
-  const blob = new Blob([buildMemo(lastAnalysis.payload, lastAnalysis.result)], {
-    type: "text/markdown;charset=utf-8",
-  });
+  const blob = new Blob(
+    [buildMemo(lastAnalysis.payload, lastAnalysis.result, lastAnalysis.comparison)],
+    {
+      type: "text/markdown;charset=utf-8",
+    },
+  );
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -398,6 +411,17 @@ downloadMemoButton.addEventListener("click", () => {
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
   setStatus("Memo downloaded", "ok");
+});
+
+shareLinkButton.addEventListener("click", async () => {
+  if (!lastAnalysis) return;
+  try {
+    const url = buildShareUrl(lastAnalysis.payload, window.location.href);
+    await navigator.clipboard.writeText(url);
+    setStatus("Share link copied", "ok");
+  } catch {
+    setStatus("Share unavailable", "error");
+  }
 });
 
 function scheduleDraftSave() {
@@ -423,10 +447,19 @@ function restoreDraft() {
   draftStatus.textContent = "Draft restored";
 }
 
+function restoreSharedScenario() {
+  const shared = parseShareUrl(window.location.href);
+  if (!shared) return false;
+  applyPayload(shared);
+  saveDraft(shared, "Shared scenario loaded");
+  setStatus("Scenario loaded", "ok");
+  return true;
+}
+
 function setFormError(message) {
   formError.textContent = message;
   formError.hidden = !message;
 }
 
-restoreDraft();
+if (!restoreSharedScenario()) restoreDraft();
 renderHistory();

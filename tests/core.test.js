@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 
 import {
   buildMemo,
+  buildShareUrl,
   compareResults,
   createHistoryEntry,
   migrateHistory,
   normalizePayload,
   parseDraft,
+  parseShareUrl,
   serializeDraft,
   titleCase,
 } from "../static/core.js";
@@ -147,6 +149,42 @@ test("payload normalization preserves valid evidence and defaults missing eviden
   assert.equal(normalizePayload({ ...payload, evidence: undefined }).evidence, "idea");
 });
 
+test("share links round-trip normalized scenario inputs", () => {
+  const url = buildShareUrl(payload, "https://example.com/studio?old=value#results");
+  const parsed = parseShareUrl(url);
+
+  assert.deepEqual(parsed, payload);
+  assert.equal(new URL(url).searchParams.get("v"), "1");
+  assert.equal(new URL(url).hash, "");
+  assert.equal(new URL(url).searchParams.has("old"), false);
+});
+
+test("shared inputs are allow-listed, clamped, and stripped of null bytes", () => {
+  const url = new URL("https://example.com/studio");
+  url.searchParams.set("idea", `\0${"x".repeat(400)}`);
+  url.searchParams.set("goal", " safe goal \0");
+  url.searchParams.set("deadline", "9999");
+  url.searchParams.set("hours", "-4");
+  url.searchParams.set("confidence", "99");
+  url.searchParams.set("scope", "everything");
+  url.searchParams.set("risk", "reckless");
+  url.searchParams.set("evidence", "invented");
+
+  const parsed = parseShareUrl(url);
+
+  assert.equal(parsed.idea.length, 320);
+  assert.equal(parsed.idea.includes("\0"), false);
+  assert.equal(parsed.goal, "safe goal");
+  assert.equal(parsed.deadlineDays, 180);
+  assert.equal(parsed.hoursPerWeek, 1);
+  assert.equal(parsed.confidence, 5);
+  assert.equal(parsed.scope, "focused");
+  assert.equal(parsed.riskAppetite, "medium");
+  assert.equal(parsed.evidence, "idea");
+  assert.equal(parseShareUrl("https://example.com/studio?idea="), null);
+  assert.equal(parseShareUrl("javascript:alert(1)"), null);
+});
+
 test("decision memo includes the lever and execution timeline", () => {
   const memo = buildMemo(payload, result);
 
@@ -157,4 +195,16 @@ test("decision memo includes the lever and execution timeline", () => {
   assert.match(memo, /\*\*Likely score range:\*\* 75-89/);
   assert.match(memo, /## Timeline/);
   assert.match(memo, /\*\*Day 1:\*\* Define the success signal\./);
+});
+
+test("decision memo carries scenario comparison context", () => {
+  const previous = {
+    score: 70,
+    metrics: { clarity: 80, feasibility: 70, momentum: 75, evidence: 20, risk: 70 },
+  };
+  const memo = buildMemo(payload, result, compareResults(previous, result));
+
+  assert.match(memo, /## Scenario Comparison/);
+  assert.match(memo, /Overall score: \+12 \(Improved\)/);
+  assert.match(memo, /Risk: -35 \(Improved; lower is better\)/);
 });

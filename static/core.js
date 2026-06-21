@@ -91,11 +91,11 @@ export function parseDraft(raw) {
 
 export function normalizePayload(payload = {}) {
   return {
-    idea: typeof payload.idea === "string" ? payload.idea : "",
-    goal: typeof payload.goal === "string" ? payload.goal : "",
-    deadlineDays: Number.isFinite(payload.deadlineDays) ? payload.deadlineDays : 21,
-    hoursPerWeek: Number.isFinite(payload.hoursPerWeek) ? payload.hoursPerWeek : 8,
-    confidence: Number.isFinite(payload.confidence) ? payload.confidence : 3,
+    idea: cleanText(payload.idea, 320),
+    goal: cleanText(payload.goal, 220),
+    deadlineDays: clampInteger(payload.deadlineDays, 21, 1, 180),
+    hoursPerWeek: clampInteger(payload.hoursPerWeek, 8, 1, 60),
+    confidence: clampInteger(payload.confidence, 3, 1, 5),
     scope: ["tiny", "focused", "ambitious"].includes(payload.scope) ? payload.scope : "focused",
     riskAppetite: ["low", "medium", "high"].includes(payload.riskAppetite)
       ? payload.riskAppetite
@@ -104,7 +104,48 @@ export function normalizePayload(payload = {}) {
   };
 }
 
-export function buildMemo(payload, result) {
+export function buildShareUrl(payload, baseUrl) {
+  const normalized = normalizePayload(payload);
+  const url = new URL(baseUrl);
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new TypeError("Share links require an HTTP URL.");
+  }
+
+  url.search = "";
+  url.hash = "";
+  url.searchParams.set("v", "1");
+  url.searchParams.set("idea", normalized.idea);
+  url.searchParams.set("goal", normalized.goal);
+  url.searchParams.set("deadline", String(normalized.deadlineDays));
+  url.searchParams.set("hours", String(normalized.hoursPerWeek));
+  url.searchParams.set("confidence", String(normalized.confidence));
+  url.searchParams.set("scope", normalized.scope);
+  url.searchParams.set("risk", normalized.riskAppetite);
+  url.searchParams.set("evidence", normalized.evidence);
+  return url.toString();
+}
+
+export function parseShareUrl(value) {
+  try {
+    const url = new URL(value);
+    if (!["http:", "https:"].includes(url.protocol) || !url.searchParams.has("idea")) return null;
+    const payload = normalizePayload({
+      idea: url.searchParams.get("idea"),
+      goal: url.searchParams.get("goal"),
+      deadlineDays: numberParam(url.searchParams, "deadline"),
+      hoursPerWeek: numberParam(url.searchParams, "hours"),
+      confidence: numberParam(url.searchParams, "confidence"),
+      scope: url.searchParams.get("scope"),
+      riskAppetite: url.searchParams.get("risk"),
+      evidence: url.searchParams.get("evidence"),
+    });
+    return payload.idea ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+export function buildMemo(payload, result, comparison = null) {
   const normalizedPayload = normalizePayload(payload);
   const lever = result.recommendedLever || DEFAULT_LEVER;
   const evidenceGrade = result.evidenceGrade || defaultEvidenceGrade();
@@ -118,6 +159,7 @@ export function buildMemo(payload, result) {
     .map((item) => `- **${item.label}:** ${item.action}`)
     .join("\n");
   const questionRows = result.questions.map((question) => `- ${question}`).join("\n");
+  const comparisonBlock = buildComparisonBlock(comparison);
   return `# PulseBoard Decision Memo
 
 ## ${result.verdict} - ${result.score}/100
@@ -134,6 +176,7 @@ export function buildMemo(payload, result) {
 
 ${result.summary}
 
+${comparisonBlock}
 ## Best Lever
 
 **${lever.title}** (${lever.metric})
@@ -168,6 +211,45 @@ ${riskRows}
 
 ${questionRows}
 `;
+}
+
+function buildComparisonBlock(comparison) {
+  if (!comparison || !Number.isFinite(comparison.scoreDelta) || !Array.isArray(comparison.metrics)) {
+    return "";
+  }
+  const scoreDelta = formatDelta(comparison.scoreDelta);
+  const rows = comparison.metrics
+    .filter((metric) => Number.isFinite(metric.delta))
+    .map((metric) => {
+      const note = metric.name === "risk" ? "; lower is better" : "";
+      return `- ${titleCase(metric.name)}: ${formatDelta(metric.delta)} (${titleCase(metric.status)}${note})`;
+    })
+    .join("\n");
+  return `## Scenario Comparison
+
+- Overall score: ${scoreDelta} (${titleCase(comparison.status)})
+${rows}
+
+`;
+}
+
+function cleanText(value, maxLength) {
+  return typeof value === "string" ? value.replace(/\0/g, "").trim().slice(0, maxLength) : "";
+}
+
+function clampInteger(value, fallback, minimum, maximum) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(maximum, Math.max(minimum, Math.round(number)));
+}
+
+function numberParam(params, name) {
+  const value = params.get(name);
+  return value === null || value === "" ? undefined : Number(value);
+}
+
+function formatDelta(value) {
+  return value > 0 ? `+${value}` : String(value);
 }
 
 function isHistoryEntry(entry) {
