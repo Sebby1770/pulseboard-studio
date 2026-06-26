@@ -44,6 +44,20 @@ const result = {
     action: "Keep one complete workflow.",
     rationale: "A narrower release is easier to validate.",
   },
+  highestImpactMoves: [
+    {
+      id: "scope",
+      title: "Reduce to one workflow",
+      action: "Remove one complete feature family.",
+      metric: "Feasibility",
+      effort: "30 minutes",
+      projectedScore: 88,
+      delta: 6,
+    },
+  ],
+  stopConditions: [
+    "Pause if two consecutive tests miss the smallest experiment's success signal.",
+  ],
   smallestExperiment: {
     build: "Build one dashboard view.",
     test: "Test it with three users.",
@@ -98,6 +112,8 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   delete oldResult.metrics.evidence;
   delete oldResult.evidenceGrade;
   delete oldResult.scoreRange;
+  delete oldResult.highestImpactMoves;
+  delete oldResult.stopConditions;
 
   const restored = migrateHistory(
     JSON.stringify([
@@ -117,6 +133,8 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   assert.equal(restored[0].result.metrics.evidence, 20);
   assert.equal(restored[0].result.evidenceGrade.label, "Early estimate");
   assert.equal(restored[0].result.scoreRange.margin, 12);
+  assert.deepEqual(restored[0].result.highestImpactMoves, []);
+  assert.deepEqual(restored[0].result.stopConditions, []);
 });
 
 test("scenario comparison treats lower risk as an improvement", () => {
@@ -247,11 +265,15 @@ test("decision memo includes the lever and execution timeline", () => {
 
   assert.match(memo, /## Best Lever/);
   assert.match(memo, /Remove one feature family/);
+  assert.match(memo, /## Highest-Impact Moves/);
+  assert.match(memo, /Reduce to one workflow/);
   assert.match(memo, /\*\*Validation evidence:\*\* External signals/);
   assert.match(memo, /\*\*Score confidence:\*\* Directional/);
   assert.match(memo, /\*\*Likely score range:\*\* 75-89/);
   assert.match(memo, /## Timeline/);
   assert.match(memo, /\*\*Day 1:\*\* Define the success signal\./);
+  assert.match(memo, /## Stop Conditions/);
+  assert.match(memo, /Pause if two consecutive tests/);
 });
 
 test("decision memo carries scenario comparison context", () => {

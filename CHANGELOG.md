@@ -4,6 +4,33 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [0.8.0] - 2026-06-26
+
+### Added
+
+- A generated abstract constructivist decision-field artwork asset and a full editorial redesign for the first screen.
+- Ranked highest-impact moves with deterministic projected score lifts and effort labels.
+- Stop-condition guardrails that define when to pause, narrow, or re-score a project.
+- Memo exports for highest-impact moves and stop conditions.
+- Local server tests covering API metadata, strict JSON handling, asset caching, and query-stripped logs.
+
+### Changed
+
+- Updated the scoring model to `6.0` and the application to `0.8.0`.
+- The result panel now shows the active engine version and animates into a denser strategy-console layout.
+- The local API health endpoint now reports model metadata used by the browser UI.
+
+### Fixed
+
+- Restored older browser history snapshots now receive safe defaults for v0.8 move and stop-condition fields.
+- The local server rejects non-JSON score submissions before attempting to parse a request body.
+
+### Security
+
+- Local static responses now include CSP, referrer policy, permissions policy, content-type sniffing protection, and asset-specific cache headers.
+- JSON API responses are marked `no-store`.
+- Local access logs record only the request path, keeping fragment-migrated query scenarios out of server logs.
+
 ## [0.7.0] - 2026-06-21
 
 ### Added
@@ -166,6 +193,7 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[0.8.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.6.0
 [0.5.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.5.0

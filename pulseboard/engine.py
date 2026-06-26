@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 
@@ -52,7 +52,7 @@ EVIDENCE_MARGINS = {
     "users": 3,
 }
 
-MODEL_VERSION = "5.0"
+MODEL_VERSION = "6.0"
 
 
 @dataclass(frozen=True)
@@ -71,6 +71,29 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
     """Return a deterministic execution plan for a proposed project."""
 
     brief = _coerce_payload(payload)
+    score, metrics, signals = _score_brief(brief)
+
+    return {
+        "modelVersion": MODEL_VERSION,
+        "score": score,
+        "scoreRange": _score_range(score, brief.evidence),
+        "verdict": _verdict(score),
+        "summary": _summary(brief, score),
+        "evidenceGrade": _evidence_grade(brief.evidence),
+        "signals": sorted(signals),
+        "metrics": metrics,
+        "recommendedLever": _recommended_lever(brief, metrics),
+        "highestImpactMoves": _highest_impact_moves(brief, score),
+        "stopConditions": _stop_conditions(brief, metrics),
+        "nextSteps": _next_steps(brief, score, signals),
+        "risks": _risks(brief, metrics["risk"]),
+        "timeline": _timeline(brief),
+        "smallestExperiment": _smallest_experiment(brief, signals),
+        "questions": _questions(brief, signals),
+    }
+
+
+def _score_brief(brief: ProjectBrief) -> tuple[int, dict[str, int], set[str]]:
     idea_words = _word_count(brief.idea)
     goal_words = _word_count(brief.goal)
     signals = _signal_hits(f"{brief.idea} {brief.goal}")
@@ -131,7 +154,7 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
         )
     )
 
-    metrics = {
+    metrics: dict[str, int] = {
         "clarity": round(clarity),
         "feasibility": round(feasibility),
         "momentum": round(momentum),
@@ -139,22 +162,7 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
         "risk": round(risk),
     }
 
-    return {
-        "modelVersion": MODEL_VERSION,
-        "score": score,
-        "scoreRange": _score_range(score, brief.evidence),
-        "verdict": _verdict(score),
-        "summary": _summary(brief, score),
-        "evidenceGrade": _evidence_grade(brief.evidence),
-        "signals": sorted(signals),
-        "metrics": metrics,
-        "recommendedLever": _recommended_lever(brief, metrics),
-        "nextSteps": _next_steps(brief, score, signals),
-        "risks": _risks(brief, risk),
-        "timeline": _timeline(brief),
-        "smallestExperiment": _smallest_experiment(brief, signals),
-        "questions": _questions(brief, signals),
-    }
+    return score, metrics, signals
 
 
 def _coerce_payload(payload: dict[str, Any]) -> ProjectBrief:
@@ -343,6 +351,116 @@ def _questions(brief: ProjectBrief, signals: set[str]) -> list[str]:
     if brief.evidence == "idea":
         questions.insert(1, "What is the fastest external signal that would challenge this idea?")
     return questions[:4]
+
+
+def _highest_impact_moves(brief: ProjectBrief, current_score: int) -> list[dict[str, Any]]:
+    candidates: list[tuple[str, str, str, str, str, ProjectBrief]] = []
+
+    if brief.evidence == "idea":
+        candidates.append(
+            (
+                "evidence",
+                "Get one external signal",
+                "Show the promise to five target users and record which problem they recognize without prompting.",
+                "Evidence",
+                "1-3 days",
+                replace(brief, evidence="signals"),
+            )
+        )
+    elif brief.evidence == "signals":
+        candidates.append(
+            (
+                "evidence",
+                "Observe real use",
+                "Put one working path in front of three target users and capture what they actually complete.",
+                "Evidence",
+                "3-5 days",
+                replace(brief, evidence="users"),
+            )
+        )
+
+    if brief.scope != "tiny":
+        narrower_scope = "focused" if brief.scope == "ambitious" else "tiny"
+        candidates.append(
+            (
+                "scope",
+                "Reduce to one workflow",
+                "Remove one complete feature family and keep a single input-to-outcome path for release one.",
+                "Feasibility",
+                "30 minutes",
+                replace(brief, scope=narrower_scope),
+            )
+        )
+
+    if brief.hours_per_week < 12:
+        target_hours = min(12, brief.hours_per_week + 4)
+        candidates.append(
+            (
+                "capacity",
+                f"Protect {target_hours} hours a week",
+                "Reserve the extra capacity on the calendar before adding another feature or dependency.",
+                "Momentum",
+                "10 minutes",
+                replace(brief, hours_per_week=target_hours),
+            )
+        )
+
+    if brief.deadline_days <= 21:
+        target_days = max(30, brief.deadline_days + 14)
+        candidates.append(
+            (
+                "deadline",
+                f"Move the decision window to {target_days} days",
+                "Use the additional time for one build-test-revise loop, not for expanding scope.",
+                "Risk",
+                "5 minutes",
+                replace(brief, deadline_days=target_days),
+            )
+        )
+
+    if brief.confidence < 5:
+        candidates.append(
+            (
+                "confidence",
+                "Resolve the biggest unknown",
+                "Run one focused test that would move confidence up by a single level before committing the full build.",
+                "Momentum",
+                "1 day",
+                replace(brief, confidence=brief.confidence + 1),
+            )
+        )
+
+    moves = []
+    for move_id, title, action, metric, effort, projected_brief in candidates:
+        projected_score, _, _ = _score_brief(projected_brief)
+        moves.append(
+            {
+                "id": move_id,
+                "title": title,
+                "action": action,
+                "metric": metric,
+                "effort": effort,
+                "projectedScore": projected_score,
+                "delta": projected_score - current_score,
+            }
+        )
+
+    moves.sort(key=lambda move: (-move["delta"], move["id"]))
+    return moves[:3]
+
+
+def _stop_conditions(brief: ProjectBrief, metrics: dict[str, int]) -> list[str]:
+    conditions = [
+        "Pause if two consecutive tests miss the smallest experiment's success signal.",
+        "Reshape the project if the core workflow still needs explanation after three user sessions.",
+    ]
+    if brief.evidence == "idea":
+        conditions.insert(0, "Do not expand scope until at least one target user confirms the problem exists.")
+    elif metrics["risk"] >= 60:
+        conditions.insert(0, "Stop the build if the highest-risk dependency fails in two representative cases.")
+    else:
+        conditions.insert(0, "Re-score before adding any feature that does not strengthen the release goal.")
+    return conditions[:3]
 
 
 def _recommended_lever(brief: ProjectBrief, metrics: dict[str, int]) -> dict[str, str]:

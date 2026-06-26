@@ -24,10 +24,13 @@ const evidenceNote = document.querySelector("#evidenceNote");
 const scoreRange = document.querySelector("#scoreRange");
 const scoreRing = document.querySelector("#scoreRing");
 const scoreValue = document.querySelector("#scoreValue");
+const resultPanel = document.querySelector(".result-panel");
+const modelVersion = document.querySelector("#modelVersion");
 const metricGrid = document.querySelector("#metricGrid");
 const signalRow = document.querySelector("#signalRow");
 const nextSteps = document.querySelector("#nextSteps");
 const risks = document.querySelector("#risks");
+const stopConditions = document.querySelector("#stopConditions");
 const timeline = document.querySelector("#timeline");
 const questions = document.querySelector("#questions");
 const experimentSection = document.querySelector("#experimentSection");
@@ -35,6 +38,8 @@ const experimentGrid = document.querySelector("#experimentGrid");
 const primaryResults = document.querySelector("#primaryResults");
 const secondaryResults = document.querySelector("#secondaryResults");
 const leverSection = document.querySelector("#leverSection");
+const impactSection = document.querySelector("#impactSection");
+const impactList = document.querySelector("#impactList");
 const leverMetric = document.querySelector("#leverMetric");
 const leverTitle = document.querySelector("#leverTitle");
 const leverAction = document.querySelector("#leverAction");
@@ -109,7 +114,21 @@ async function scoreProject(payload) {
   }
 }
 
+async function checkApi() {
+  try {
+    const response = await fetch("/api/score", { headers: { accept: "application/json" } });
+    const status = await response.json();
+    if (!response.ok) throw new Error(status.error || "API unavailable.");
+    modelVersion.textContent = `Engine ${status.modelVersion || "ready"}`;
+    setStatus("API ready", "ok");
+  } catch {
+    setStatus("API offline", "error");
+  }
+}
+
 function renderResult(result) {
+  resultPanel.dataset.ready = "true";
+  modelVersion.textContent = `Engine ${result.modelVersion || "ready"}`;
   verdict.textContent = result.verdict;
   summary.textContent = result.summary;
   evidenceNote.textContent = `${result.evidenceGrade.label}: ${result.evidenceGrade.detail}`;
@@ -153,8 +172,10 @@ function renderResult(result) {
   leverRationale.textContent = lever.rationale;
   leverSection.hidden = false;
 
+  renderImpactMoves(result.highestImpactMoves || []);
   nextSteps.replaceChildren(...result.nextSteps.map((step) => listItem(step)));
   risks.replaceChildren(...result.risks.map((risk) => listItem(risk)));
+  stopConditions.replaceChildren(...(result.stopConditions || []).map((condition) => listItem(condition)));
   questions.replaceChildren(...result.questions.map((question) => listItem(question)));
   timeline.replaceChildren(
     ...result.timeline.map((item) => {
@@ -187,6 +208,37 @@ function renderResult(result) {
   downloadMemoButton.disabled = false;
   shareLinkButton.disabled = false;
   updateBaselineButton(result);
+}
+
+function renderImpactMoves(moves) {
+  impactList.replaceChildren(
+    ...moves.map((move, index) => {
+      const item = document.createElement("article");
+      item.className = "impact-item";
+      const rank = document.createElement("span");
+      const copy = document.createElement("div");
+      const title = document.createElement("strong");
+      const detail = document.createElement("span");
+      const score = document.createElement("div");
+      const delta = document.createElement("strong");
+      const projected = document.createElement("small");
+
+      rank.className = "impact-rank";
+      rank.textContent = String(index + 1).padStart(2, "0");
+      copy.className = "impact-copy";
+      title.textContent = move.title;
+      detail.textContent = `${move.action} ${move.metric} lift, ${move.effort}.`;
+      score.className = "impact-score";
+      delta.textContent = move.delta > 0 ? `+${move.delta}` : String(move.delta);
+      projected.textContent = `to ${move.projectedScore}`;
+
+      copy.append(title, detail);
+      score.append(delta, projected);
+      item.append(rank, copy, score);
+      return item;
+    }),
+  );
+  impactSection.hidden = !moves.length;
 }
 
 function renderComparison(previous, current, context = "") {
@@ -384,6 +436,7 @@ clearButton.addEventListener("click", () => {
   metricGrid.replaceChildren();
   nextSteps.replaceChildren();
   risks.replaceChildren();
+  stopConditions.replaceChildren();
   verdict.textContent = "Ready when you are";
   summary.textContent =
     "Add a project idea and PulseBoard will score clarity, feasibility, momentum, evidence, and risk.";
@@ -396,6 +449,8 @@ clearButton.addEventListener("click", () => {
   signalRow.replaceChildren();
   timeline.replaceChildren();
   questions.replaceChildren();
+  impactList.replaceChildren();
+  impactSection.hidden = true;
   experimentGrid.replaceChildren();
   experimentSection.hidden = true;
   leverSection.hidden = true;
@@ -408,6 +463,7 @@ clearButton.addEventListener("click", () => {
   copyMemoButton.disabled = true;
   downloadMemoButton.disabled = true;
   shareLinkButton.disabled = true;
+  delete resultPanel.dataset.ready;
   confidenceValue.textContent = confidence.value;
   lastAnalysis = null;
   updateBaselineButton(null);
@@ -525,4 +581,5 @@ function setFormError(message) {
 }
 
 if (!restoreSharedScenario()) restoreDraft();
+checkApi();
 renderHistory();

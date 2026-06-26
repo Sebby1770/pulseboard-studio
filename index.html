@@ -13,190 +13,233 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <div>
-          <p class="app-mark">PulseBoard Studio</p>
-          <h1>Score the next project before it eats the week.</h1>
+        <div class="hero-copy">
+          <h1>PulseBoard <span>Studio</span></h1>
+          <p class="hero-tagline">Decide what deserves the week.</p>
+          <div class="status-chip" id="apiStatus" role="status" aria-live="polite">
+            Checking engine
+          </div>
         </div>
-        <div class="status-chip" id="apiStatus" role="status" aria-live="polite">API idle</div>
       </header>
 
       <section class="workspace" aria-label="Project scoring workspace">
         <form class="panel form-panel" id="projectForm">
-          <div class="field-group">
-            <label for="idea">Project idea</label>
-            <textarea
-              id="idea"
-              name="idea"
-              rows="5"
-              maxlength="320"
-              required
-              placeholder="A client-ready dashboard that tracks API health, usage spikes, and launch blockers."
-            ></textarea>
-          </div>
-
-          <div class="field-group">
-            <label for="goal">First release goal</label>
-            <input
-              id="goal"
-              name="goal"
-              maxlength="220"
-              placeholder="Ship a useful demo with one clear workflow."
-            />
-          </div>
-
-          <div class="control-grid">
-            <label>
-              Deadline
-              <input id="deadlineDays" name="deadlineDays" type="number" min="1" max="180" value="21" />
-            </label>
-            <label>
-              Hours/week
-              <input id="hoursPerWeek" name="hoursPerWeek" type="number" min="1" max="60" value="8" />
-            </label>
-            <label>
-              <span class="range-label">Confidence <output id="confidenceValue">3</output></span>
-              <input id="confidence" name="confidence" type="range" min="1" max="5" value="3" />
-            </label>
-          </div>
-
-          <div class="segmented" aria-label="Scope">
-            <input type="radio" id="scopeTiny" name="scope" value="tiny" />
-            <label for="scopeTiny">Tiny</label>
-            <input type="radio" id="scopeFocused" name="scope" value="focused" checked />
-            <label for="scopeFocused">Focused</label>
-            <input type="radio" id="scopeAmbitious" name="scope" value="ambitious" />
-            <label for="scopeAmbitious">Ambitious</label>
-          </div>
-
-          <div class="segmented" aria-label="Risk tolerance">
-            <input type="radio" id="riskLow" name="riskAppetite" value="low" />
-            <label for="riskLow">Cautious</label>
-            <input type="radio" id="riskMedium" name="riskAppetite" value="medium" checked />
-            <label for="riskMedium">Balanced</label>
-            <input type="radio" id="riskHigh" name="riskAppetite" value="high" />
-            <label for="riskHigh">Bold</label>
-          </div>
-
-          <div class="evidence-control">
-            <p class="control-label" id="evidenceLabel">Validation evidence</p>
-            <div class="segmented" aria-labelledby="evidenceLabel">
-              <input type="radio" id="evidenceIdea" name="evidence" value="idea" checked />
-              <label for="evidenceIdea">Idea only</label>
-              <input type="radio" id="evidenceSignals" name="evidence" value="signals" />
-              <label for="evidenceSignals">Signals</label>
-              <input type="radio" id="evidenceUsers" name="evidence" value="users" />
-              <label for="evidenceUsers">User proof</label>
+          <div class="panel-bar"><strong>Project brief</strong><span>01</span></div>
+          <div class="panel-content form-content">
+            <div class="field-group">
+              <label for="idea">Project idea</label>
+              <textarea
+                id="idea"
+                name="idea"
+                rows="5"
+                maxlength="320"
+                required
+                placeholder="A client-ready dashboard that tracks API health, usage spikes, and launch blockers."
+              ></textarea>
             </div>
-          </div>
 
-          <div class="button-row">
-            <button type="submit" class="primary-action">Analyze</button>
-            <button type="button" id="sampleButton">Sample</button>
-            <button type="button" id="clearButton">Clear</button>
-          </div>
-          <div class="form-feedback">
-            <p class="form-error" id="formError" role="alert" hidden></p>
-            <p class="draft-status" id="draftStatus" role="status" aria-live="polite"></p>
+            <div class="field-group">
+              <label for="goal">First release goal</label>
+              <input
+                id="goal"
+                name="goal"
+                maxlength="220"
+                placeholder="Ship a useful demo with one clear workflow."
+              />
+            </div>
+
+            <div class="control-grid">
+              <label>
+                Deadline
+                <input
+                  id="deadlineDays"
+                  name="deadlineDays"
+                  type="number"
+                  min="1"
+                  max="180"
+                  value="21"
+                />
+              </label>
+              <label>
+                Hours/week
+                <input
+                  id="hoursPerWeek"
+                  name="hoursPerWeek"
+                  type="number"
+                  min="1"
+                  max="60"
+                  value="8"
+                />
+              </label>
+              <label>
+                <span class="range-label">Confidence <output id="confidenceValue">3</output></span>
+                <input id="confidence" name="confidence" type="range" min="1" max="5" value="3" />
+              </label>
+            </div>
+
+            <div class="control-block">
+              <p class="control-label">Scope</p>
+              <div class="segmented" aria-label="Scope">
+                <input type="radio" id="scopeTiny" name="scope" value="tiny" />
+                <label for="scopeTiny">Tiny</label>
+                <input type="radio" id="scopeFocused" name="scope" value="focused" checked />
+                <label for="scopeFocused">Focused</label>
+                <input type="radio" id="scopeAmbitious" name="scope" value="ambitious" />
+                <label for="scopeAmbitious">Ambitious</label>
+              </div>
+            </div>
+
+            <div class="control-block">
+              <p class="control-label">Risk tolerance</p>
+              <div class="segmented" aria-label="Risk tolerance">
+                <input type="radio" id="riskLow" name="riskAppetite" value="low" />
+                <label for="riskLow">Cautious</label>
+                <input type="radio" id="riskMedium" name="riskAppetite" value="medium" checked />
+                <label for="riskMedium">Balanced</label>
+                <input type="radio" id="riskHigh" name="riskAppetite" value="high" />
+                <label for="riskHigh">Bold</label>
+              </div>
+            </div>
+
+            <div class="control-block evidence-control">
+              <p class="control-label" id="evidenceLabel">Validation evidence</p>
+              <div class="segmented" aria-labelledby="evidenceLabel">
+                <input type="radio" id="evidenceIdea" name="evidence" value="idea" checked />
+                <label for="evidenceIdea">Idea only</label>
+                <input type="radio" id="evidenceSignals" name="evidence" value="signals" />
+                <label for="evidenceSignals">Signals</label>
+                <input type="radio" id="evidenceUsers" name="evidence" value="users" />
+                <label for="evidenceUsers">User proof</label>
+              </div>
+            </div>
+
+            <div class="button-row">
+              <button type="submit" class="primary-action">Analyze</button>
+              <button type="button" id="sampleButton">Sample</button>
+              <button type="button" id="clearButton">Clear</button>
+            </div>
+            <div class="form-feedback">
+              <p class="form-error" id="formError" role="alert" hidden></p>
+              <p class="draft-status" id="draftStatus" role="status" aria-live="polite"></p>
+            </div>
           </div>
         </form>
 
         <section class="panel result-panel" aria-live="polite">
-          <div class="score-header">
-            <div>
-              <p class="eyebrow">Current read</p>
-              <h2 id="verdict">Ready when you are</h2>
-              <p class="score-range" id="scoreRange" hidden></p>
-            </div>
-            <div class="score-tools">
-              <div class="score-ring" id="scoreRing">
-                <span id="scoreValue">--</span>
-              </div>
-              <button type="button" id="baselineButton" disabled>Set baseline</button>
-            </div>
-          </div>
-
-          <p class="summary" id="summary">
-            Add a project idea and PulseBoard will score clarity, feasibility, momentum, evidence, and risk.
-          </p>
-
-          <p class="evidence-note" id="evidenceNote" hidden></p>
-
-          <div class="signal-row" id="signalRow" aria-label="Detected project signals"></div>
-
-          <div class="meter-grid" id="metricGrid"></div>
-
-          <section class="comparison-section" id="comparisonSection" hidden>
-            <div class="comparison-heading">
+          <div class="panel-bar"><strong>Result</strong><span id="modelVersion">Engine 6.0</span></div>
+          <div class="panel-content result-content">
+            <div class="score-header">
               <div>
-                <p class="eyebrow">Scenario comparison</p>
-                <h3 id="comparisonTitle"></h3>
-                <p class="comparison-context" id="comparisonContext" hidden></p>
+                <p class="eyebrow">Current read</p>
+                <h2 id="verdict">Ready when you are</h2>
+                <p class="score-range" id="scoreRange" hidden></p>
               </div>
-              <strong class="comparison-score" id="comparisonScore"></strong>
+              <div class="score-tools">
+                <div class="score-ring" id="scoreRing">
+                  <span id="scoreValue">--</span>
+                </div>
+                <button type="button" id="baselineButton" disabled>Set baseline</button>
+              </div>
             </div>
-            <div class="comparison-grid" id="comparisonGrid"></div>
-          </section>
 
-          <section class="lever-section" id="leverSection" hidden>
-            <div>
-              <p class="eyebrow">Best lever</p>
-              <h3 id="leverTitle"></h3>
-              <p id="leverAction"></p>
-            </div>
-            <div class="lever-context">
-              <strong id="leverMetric"></strong>
-              <span id="leverRationale"></span>
-            </div>
-          </section>
+            <p class="summary" id="summary">
+              Add a project idea and PulseBoard will score clarity, feasibility, momentum,
+              evidence, and risk.
+            </p>
+            <p class="evidence-note" id="evidenceNote" hidden></p>
+            <div class="signal-row" id="signalRow" aria-label="Detected project signals"></div>
+            <div class="meter-grid" id="metricGrid"></div>
 
-          <section class="experiment-section" id="experimentSection" hidden>
-            <div class="section-heading">
+            <section class="comparison-section" id="comparisonSection" hidden>
+              <div class="comparison-heading">
+                <div>
+                  <p class="eyebrow">Scenario comparison</p>
+                  <h3 id="comparisonTitle"></h3>
+                  <p class="comparison-context" id="comparisonContext" hidden></p>
+                </div>
+                <strong class="comparison-score" id="comparisonScore"></strong>
+              </div>
+              <div class="comparison-grid" id="comparisonGrid"></div>
+            </section>
+
+            <div class="strategy-grid">
+              <section class="lever-section" id="leverSection" hidden>
+                <div>
+                  <p class="eyebrow">Best lever</p>
+                  <h3 id="leverTitle"></h3>
+                  <p id="leverAction"></p>
+                </div>
+                <div class="lever-context">
+                  <strong id="leverMetric"></strong>
+                  <span id="leverRationale"></span>
+                </div>
+              </section>
+
+              <section class="impact-section" id="impactSection" hidden>
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Highest-impact moves</p>
+                    <h3>Change the score, not just the wording.</h3>
+                  </div>
+                </div>
+                <div class="impact-list" id="impactList"></div>
+              </section>
+            </div>
+
+            <section class="experiment-section" id="experimentSection" hidden>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Smallest useful experiment</p>
+                  <h3>Test the promise before expanding the build.</h3>
+                </div>
+                <div class="memo-actions">
+                  <button type="button" id="copyMemoButton" disabled>Copy memo</button>
+                  <button type="button" id="downloadMemoButton" disabled>Download .md</button>
+                  <button type="button" id="shareLinkButton" disabled>Share link</button>
+                </div>
+              </div>
+              <div class="experiment-grid" id="experimentGrid"></div>
+            </section>
+
+            <div class="result-columns primary-results" id="primaryResults" hidden>
               <div>
-                <p class="eyebrow">Smallest useful experiment</p>
-                <h3>Test the promise before expanding the build.</h3>
+                <h3>Next steps</h3>
+                <ol id="nextSteps" class="stack-list"></ol>
               </div>
-              <div class="memo-actions">
-                <button type="button" id="copyMemoButton" disabled>Copy memo</button>
-                <button type="button" id="downloadMemoButton" disabled>Download .md</button>
-                <button type="button" id="shareLinkButton" disabled>Share link</button>
+              <div>
+                <h3>Risks</h3>
+                <ul id="risks" class="stack-list"></ul>
+              </div>
+              <div>
+                <h3>Stop conditions</h3>
+                <ul id="stopConditions" class="stack-list stop-list"></ul>
               </div>
             </div>
-            <div class="experiment-grid" id="experimentGrid"></div>
-          </section>
 
-          <div class="result-columns" id="primaryResults" hidden>
-            <div>
-              <h3>Next steps</h3>
-              <ol id="nextSteps" class="stack-list"></ol>
-            </div>
-            <div>
-              <h3>Risks</h3>
-              <ul id="risks" class="stack-list"></ul>
-            </div>
-          </div>
-
-          <div class="result-columns secondary-results" id="secondaryResults" hidden>
-            <div>
-              <h3>Timeline</h3>
-              <ol id="timeline" class="timeline-list"></ol>
-            </div>
-            <div>
-              <h3>Questions to answer</h3>
-              <ul id="questions" class="stack-list"></ul>
+            <div class="result-columns secondary-results" id="secondaryResults" hidden>
+              <div>
+                <h3>Timeline</h3>
+                <ol id="timeline" class="timeline-list"></ol>
+              </div>
+              <div>
+                <h3>Questions to answer</h3>
+                <ul id="questions" class="stack-list"></ul>
+              </div>
             </div>
           </div>
         </section>
 
         <aside class="panel history-panel">
-          <div class="history-heading">
+          <div class="panel-bar history-heading">
             <h2>Recent scores</h2>
             <button type="button" id="clearHistoryButton">Reset</button>
           </div>
           <div id="historyList" class="history-list"></div>
         </aside>
       </section>
+
       <footer class="app-footer">
-        <span>PulseBoard Studio v0.7.0</span>
+        <span>PulseBoard Studio v0.8.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>

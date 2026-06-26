@@ -24,13 +24,15 @@ class EngineTests(unittest.TestCase):
         self.assertIn("api", result["signals"])
         self.assertEqual(set(result["smallestExperiment"]), {"build", "test", "success"})
         self.assertGreaterEqual(len(result["questions"]), 3)
-        self.assertEqual(result["modelVersion"], "5.0")
+        self.assertEqual(result["modelVersion"], "6.0")
         self.assertEqual(result["metrics"]["evidence"], 60)
         self.assertEqual(set(result["scoreRange"]), {"low", "high", "margin"})
         self.assertEqual(
             set(result["recommendedLever"]),
             {"metric", "title", "action", "rationale"},
         )
+        self.assertEqual(len(result["highestImpactMoves"]), 3)
+        self.assertEqual(len(result["stopConditions"]), 3)
 
     def test_empty_idea_is_rejected(self):
         with self.assertRaises(ProjectInputError):
@@ -143,6 +145,36 @@ class EngineTests(unittest.TestCase):
         )
 
         self.assertEqual(result["recommendedLever"]["metric"], "Evidence")
+
+    def test_impact_moves_are_ranked_by_real_projected_score_gain(self):
+        result = analyse_project(
+            {
+                "idea": "Build an ambitious API dashboard and automation platform.",
+                "goal": "Ship a complete platform for every customer workflow.",
+                "deadlineDays": 14,
+                "hoursPerWeek": 4,
+                "confidence": 2,
+                "scope": "ambitious",
+                "evidence": "idea",
+            }
+        )
+
+        moves = result["highestImpactMoves"]
+        self.assertEqual([move["delta"] for move in moves], sorted(
+            [move["delta"] for move in moves], reverse=True
+        ))
+        self.assertTrue(all(move["projectedScore"] == result["score"] + move["delta"] for move in moves))
+        self.assertIn("evidence", {move["id"] for move in moves})
+
+    def test_stop_conditions_reflect_early_evidence(self):
+        result = analyse_project(
+            {
+                "idea": "Test a focused workflow for one user.",
+                "evidence": "idea",
+            }
+        )
+
+        self.assertIn("Do not expand scope", result["stopConditions"][0])
 
 
 if __name__ == "__main__":

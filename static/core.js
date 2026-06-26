@@ -199,6 +199,8 @@ export function buildMemo(payload, result, comparison = null) {
     .map((item) => `- **${item.label}:** ${item.action}`)
     .join("\n");
   const questionRows = result.questions.map((question) => `- ${question}`).join("\n");
+  const impactBlock = buildImpactBlock(result.highestImpactMoves);
+  const stopConditionsBlock = buildStopConditionsBlock(result.stopConditions);
   const comparisonBlock = buildComparisonBlock(comparison);
   return `# PulseBoard Decision Memo
 
@@ -225,6 +227,7 @@ ${lever.action}
 
 ${lever.rationale}
 
+${impactBlock}
 ## Scorecard
 
 ${metricRows}
@@ -247,9 +250,35 @@ ${steps}
 
 ${riskRows}
 
+${stopConditionsBlock}
 ## Questions To Answer
 
 ${questionRows}
+`;
+}
+
+function buildImpactBlock(moves = []) {
+  if (!Array.isArray(moves) || !moves.length) return "";
+  const rows = moves
+    .map((move, index) => {
+      const delta = formatDelta(move.delta);
+      return `${index + 1}. **${move.title}** (${delta} to ${move.projectedScore}) - ${move.action}`;
+    })
+    .join("\n");
+  return `## Highest-Impact Moves
+
+${rows}
+
+`;
+}
+
+function buildStopConditionsBlock(conditions = []) {
+  if (!Array.isArray(conditions) || !conditions.length) return "";
+  const rows = conditions.map((condition) => `- ${condition}`).join("\n");
+  return `## Stop Conditions
+
+${rows}
+
 `;
 }
 
@@ -323,6 +352,8 @@ function withResultDefaults(result) {
     evidenceGrade: result.evidenceGrade || defaultEvidenceGrade(),
     scoreRange: result.scoreRange || defaultScoreRange(result),
     recommendedLever: result.recommendedLever || DEFAULT_LEVER,
+    highestImpactMoves: Array.isArray(result.highestImpactMoves) ? result.highestImpactMoves : [],
+    stopConditions: Array.isArray(result.stopConditions) ? result.stopConditions : [],
   };
 }
 
