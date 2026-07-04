@@ -55,6 +55,29 @@ const result = {
       delta: 6,
     },
   ],
+  scenarioVariants: [
+    {
+      id: "proof-sprint",
+      label: "Proof sprint",
+      score: 90,
+      delta: 8,
+      verdict: "Green light",
+      rationale: "Shows the score after stronger evidence.",
+      changes: ["Evidence: signals -> users", "Confidence: 4 -> 5"],
+      risk: 24,
+    },
+  ],
+  thisWeekPlan: {
+    focus: "Ship one visible learning loop",
+    availableHours: 8,
+    checkpoint: "End the week with a tested happy path and one clear next decision.",
+    blocks: [
+      { label: "Frame", hours: 1, action: "Write the promise." },
+      { label: "Build", hours: 4, action: "Build one dashboard view." },
+      { label: "Test", hours: 2, action: "Test it with three users." },
+      { label: "Decide", hours: 1, action: "Choose one next move." },
+    ],
+  },
   stopConditions: [
     "Pause if two consecutive tests miss the smallest experiment's success signal.",
   ],
@@ -113,6 +136,8 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   delete oldResult.evidenceGrade;
   delete oldResult.scoreRange;
   delete oldResult.highestImpactMoves;
+  delete oldResult.scenarioVariants;
+  delete oldResult.thisWeekPlan;
   delete oldResult.stopConditions;
 
   const restored = migrateHistory(
@@ -134,6 +159,8 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   assert.equal(restored[0].result.evidenceGrade.label, "Early estimate");
   assert.equal(restored[0].result.scoreRange.margin, 12);
   assert.deepEqual(restored[0].result.highestImpactMoves, []);
+  assert.deepEqual(restored[0].result.scenarioVariants, []);
+  assert.equal(restored[0].result.thisWeekPlan, null);
   assert.deepEqual(restored[0].result.stopConditions, []);
 });
 
@@ -267,6 +294,10 @@ test("decision memo includes the lever and execution timeline", () => {
   assert.match(memo, /Remove one feature family/);
   assert.match(memo, /## Highest-Impact Moves/);
   assert.match(memo, /Reduce to one workflow/);
+  assert.match(memo, /## Scenario Lab/);
+  assert.match(memo, /Proof sprint/);
+  assert.match(memo, /## This Week Plan/);
+  assert.match(memo, /\*\*Focus:\*\* Ship one visible learning loop/);
   assert.match(memo, /\*\*Validation evidence:\*\* External signals/);
   assert.match(memo, /\*\*Score confidence:\*\* Directional/);
   assert.match(memo, /\*\*Likely score range:\*\* 75-89/);

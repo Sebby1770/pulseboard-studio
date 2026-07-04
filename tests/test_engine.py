@@ -24,7 +24,7 @@ class EngineTests(unittest.TestCase):
         self.assertIn("api", result["signals"])
         self.assertEqual(set(result["smallestExperiment"]), {"build", "test", "success"})
         self.assertGreaterEqual(len(result["questions"]), 3)
-        self.assertEqual(result["modelVersion"], "6.0")
+        self.assertEqual(result["modelVersion"], "7.0")
         self.assertEqual(result["metrics"]["evidence"], 60)
         self.assertEqual(set(result["scoreRange"]), {"low", "high", "margin"})
         self.assertEqual(
@@ -32,6 +32,8 @@ class EngineTests(unittest.TestCase):
             {"metric", "title", "action", "rationale"},
         )
         self.assertEqual(len(result["highestImpactMoves"]), 3)
+        self.assertEqual(len(result["scenarioVariants"]), 3)
+        self.assertEqual(len(result["thisWeekPlan"]["blocks"]), 4)
         self.assertEqual(len(result["stopConditions"]), 3)
 
     def test_empty_idea_is_rejected(self):
@@ -175,6 +177,52 @@ class EngineTests(unittest.TestCase):
         )
 
         self.assertIn("Do not expand scope", result["stopConditions"][0])
+
+    def test_scenario_variants_show_upside_and_scope_drift(self):
+        result = analyse_project(
+            {
+                "idea": "Build an ambitious API dashboard and automation platform.",
+                "goal": "Ship a complete platform for every customer workflow.",
+                "deadlineDays": 14,
+                "hoursPerWeek": 4,
+                "confidence": 2,
+                "scope": "ambitious",
+                "evidence": "idea",
+            }
+        )
+
+        variants = {variant["id"]: variant for variant in result["scenarioVariants"]}
+        self.assertGreater(variants["proof-sprint"]["score"], result["score"])
+        self.assertLessEqual(variants["scope-drift"]["score"], result["score"])
+        self.assertTrue(variants["lean-launch"]["changes"])
+
+    def test_this_week_plan_uses_available_hours_and_domain_signals(self):
+        result = analyse_project(
+            {
+                "idea": "Automate API support workflow data.",
+                "goal": "Ship one reliable workflow.",
+                "hoursPerWeek": 7,
+                "evidence": "signals",
+            }
+        )
+
+        plan = result["thisWeekPlan"]
+        self.assertEqual(plan["availableHours"], 7)
+        self.assertEqual(sum(block["hours"] for block in plan["blocks"]), 7)
+        self.assertIn("automation", plan["blocks"][1]["action"])
+
+    def test_this_week_plan_does_not_overallocate_tiny_hour_budgets(self):
+        result = analyse_project(
+            {
+                "idea": "Build one tiny dashboard workflow.",
+                "hoursPerWeek": 1,
+            }
+        )
+
+        plan = result["thisWeekPlan"]
+        self.assertEqual(plan["availableHours"], 1)
+        self.assertEqual(sum(block["hours"] for block in plan["blocks"]), 1)
+        self.assertEqual([block["hours"] for block in plan["blocks"]], [1, 0, 0, 0])
 
 
 if __name__ == "__main__":

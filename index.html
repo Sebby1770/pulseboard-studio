@@ -126,7 +126,7 @@
         </form>
 
         <section class="panel result-panel" aria-live="polite">
-          <div class="panel-bar"><strong>Result</strong><span id="modelVersion">Engine 6.0</span></div>
+          <div class="panel-bar"><strong>Result</strong><span id="modelVersion">Engine 7.0</span></div>
           <div class="panel-content result-content">
             <div class="score-header">
               <div>
@@ -186,6 +186,28 @@
               </section>
             </div>
 
+            <section class="scenario-section" id="scenarioSection" hidden>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Scenario lab</p>
+                  <h3>Stress-test the shape before you build.</h3>
+                </div>
+              </div>
+              <div class="scenario-grid" id="scenarioGrid"></div>
+            </section>
+
+            <section class="week-plan-section" id="weekPlanSection" hidden>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">This week plan</p>
+                  <h3 id="weekPlanFocus"></h3>
+                </div>
+                <strong class="week-plan-meta" id="weekPlanMeta"></strong>
+              </div>
+              <div class="week-plan-grid" id="weekPlanGrid"></div>
+              <p class="week-checkpoint" id="weekCheckpoint"></p>
+            </section>
+
             <section class="experiment-section" id="experimentSection" hidden>
               <div class="section-heading">
                 <div>
@@ -239,7 +261,7 @@
       </section>
 
       <footer class="app-footer">
-        <span>PulseBoard Studio v0.8.0</span>
+        <span>PulseBoard Studio v0.9.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>

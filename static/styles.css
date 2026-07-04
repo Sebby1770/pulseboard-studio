@@ -726,6 +726,138 @@ input[type="range"] {
   font-size: 0.6rem;
 }
 
+.scenario-section,
+.week-plan-section {
+  border-bottom: 1px solid var(--ink);
+  padding: 18px 0;
+}
+
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--line);
+}
+
+.scenario-card {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border-right: 1px solid var(--line);
+  padding: 12px;
+}
+
+.scenario-card:last-child {
+  border-right: 0;
+}
+
+.scenario-card > span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.scenario-card > strong {
+  color: var(--teal);
+  font-size: 2rem;
+  line-height: 0.9;
+}
+
+.scenario-card[data-delta="down"] > strong {
+  color: var(--coral);
+}
+
+.scenario-card[data-delta="flat"] > strong {
+  color: var(--ink);
+}
+
+.scenario-card em {
+  color: var(--ink);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.scenario-card p,
+.scenario-card li {
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.36;
+}
+
+.scenario-card p,
+.scenario-card ul {
+  margin: 0;
+}
+
+.scenario-card ul {
+  padding-left: 16px;
+}
+
+.week-plan-meta {
+  min-width: 86px;
+  padding: 8px 10px;
+  background: var(--teal);
+  color: var(--paper);
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.week-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+}
+
+.week-block {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-content: start;
+  min-height: 112px;
+  border-right: 1px solid var(--line);
+  padding: 12px;
+}
+
+.week-block:last-child {
+  border-right: 0;
+}
+
+.week-block strong {
+  color: var(--teal);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+}
+
+.week-block span {
+  width: 34px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.week-block p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.38;
+}
+
+.week-checkpoint {
+  margin: 10px 0 0;
+  border-left: 5px solid var(--yellow);
+  padding-left: 11px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.42;
+}
+
 .memo-actions {
   display: flex;
   gap: 7px;
@@ -935,6 +1067,8 @@ input[type="range"] {
 .result-panel[data-ready="true"] .score-header,
 .result-panel[data-ready="true"] .meter-grid,
 .result-panel[data-ready="true"] .strategy-grid,
+.result-panel[data-ready="true"] .scenario-section,
+.result-panel[data-ready="true"] .week-plan-section,
 .result-panel[data-ready="true"] .experiment-section {
   animation: reveal 360ms ease both;
 }
@@ -947,8 +1081,16 @@ input[type="range"] {
   animation-delay: 100ms;
 }
 
-.result-panel[data-ready="true"] .experiment-section {
+.result-panel[data-ready="true"] .scenario-section {
   animation-delay: 150ms;
+}
+
+.result-panel[data-ready="true"] .week-plan-section {
+  animation-delay: 200ms;
+}
+
+.result-panel[data-ready="true"] .experiment-section {
+  animation-delay: 250ms;
 }
 
 @keyframes reveal {
@@ -968,7 +1110,9 @@ input[type="range"] {
   }
 
   .strategy-grid,
-  .primary-results {
+  .primary-results,
+  .scenario-grid,
+  .week-plan-grid {
     grid-template-columns: 1fr;
   }
 
@@ -987,6 +1131,17 @@ input[type="range"] {
     border-left: 0;
     padding-top: 14px;
     padding-left: 0;
+  }
+
+  .scenario-card,
+  .week-block {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .scenario-card:last-child,
+  .week-block:last-child {
+    border-bottom: 0;
   }
 }
 

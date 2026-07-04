@@ -52,7 +52,7 @@ EVIDENCE_MARGINS = {
     "users": 3,
 }
 
-MODEL_VERSION = "6.0"
+MODEL_VERSION = "7.0"
 
 
 @dataclass(frozen=True)
@@ -84,6 +84,8 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
         "metrics": metrics,
         "recommendedLever": _recommended_lever(brief, metrics),
         "highestImpactMoves": _highest_impact_moves(brief, score),
+        "scenarioVariants": _scenario_variants(brief, score),
+        "thisWeekPlan": _this_week_plan(brief, metrics, signals),
         "stopConditions": _stop_conditions(brief, metrics),
         "nextSteps": _next_steps(brief, score, signals),
         "risks": _risks(brief, metrics["risk"]),
@@ -461,6 +463,169 @@ def _stop_conditions(brief: ProjectBrief, metrics: dict[str, int]) -> list[str]:
     else:
         conditions.insert(0, "Re-score before adding any feature that does not strengthen the release goal.")
     return conditions[:3]
+
+
+def _scenario_variants(brief: ProjectBrief, current_score: int) -> list[dict[str, Any]]:
+    variants: list[tuple[str, str, str, ProjectBrief, list[str]]] = []
+
+    lean_brief = replace(brief, scope="tiny")
+    if brief.deadline_days <= 14:
+        lean_brief = replace(lean_brief, deadline_days=21)
+    variants.append(
+        (
+            "lean-launch",
+            "Lean launch",
+            "Shows the score if release one becomes a single tiny workflow.",
+            lean_brief,
+            _scenario_changes(brief, lean_brief),
+        )
+    )
+
+    evidence_step = "signals" if brief.evidence == "idea" else "users"
+    proof_brief = replace(
+        brief,
+        evidence=evidence_step,
+        confidence=min(5, brief.confidence + 1),
+        hours_per_week=max(brief.hours_per_week, min(12, brief.hours_per_week + 2)),
+    )
+    variants.append(
+        (
+            "proof-sprint",
+            "Proof sprint",
+            "Shows the score if this week is used to earn stronger evidence before expanding.",
+            proof_brief,
+            _scenario_changes(brief, proof_brief),
+        )
+    )
+
+    drift_brief = replace(
+        brief,
+        scope="ambitious",
+        deadline_days=min(brief.deadline_days, 14),
+        confidence=max(1, brief.confidence - 1),
+    )
+    variants.append(
+        (
+            "scope-drift",
+            "Scope drift",
+            "Shows the penalty if the build grows while the decision window tightens.",
+            drift_brief,
+            _scenario_changes(brief, drift_brief),
+        )
+    )
+
+    result = []
+    for variant_id, label, rationale, projected_brief, changes in variants:
+        projected_score, projected_metrics, _ = _score_brief(projected_brief)
+        delta = projected_score - current_score
+        result.append(
+            {
+                "id": variant_id,
+                "label": label,
+                "score": projected_score,
+                "delta": delta,
+                "verdict": _verdict(projected_score),
+                "rationale": rationale,
+                "changes": changes or ["Keep the current controls unchanged."],
+                "risk": projected_metrics["risk"],
+            }
+        )
+    return result
+
+
+def _scenario_changes(current: ProjectBrief, projected: ProjectBrief) -> list[str]:
+    changes = []
+    if current.scope != projected.scope:
+        changes.append(f"Scope: {current.scope} -> {projected.scope}")
+    if current.evidence != projected.evidence:
+        changes.append(f"Evidence: {current.evidence} -> {projected.evidence}")
+    if current.confidence != projected.confidence:
+        changes.append(f"Confidence: {current.confidence} -> {projected.confidence}")
+    if current.hours_per_week != projected.hours_per_week:
+        changes.append(f"Hours/week: {current.hours_per_week} -> {projected.hours_per_week}")
+    if current.deadline_days != projected.deadline_days:
+        changes.append(f"Deadline: {current.deadline_days} -> {projected.deadline_days} days")
+    return changes
+
+
+def _allocate_week_hours(weekly_hours: int) -> tuple[int, int, int, int]:
+    if weekly_hours < 4:
+        allocation = [0, 0, 0, 0]
+        for index in range(weekly_hours):
+            allocation[index] = 1
+        return tuple(allocation)
+
+    allocation = [
+        min(2, max(1, round(weekly_hours * 0.16))),
+        max(1, round(weekly_hours * 0.48)),
+        max(1, round(weekly_hours * 0.24)),
+        1,
+    ]
+    priority = [1, 2, 0, 3]
+    difference = weekly_hours - sum(allocation)
+    while difference > 0:
+        for index in priority:
+            allocation[index] += 1
+            difference -= 1
+            if difference == 0:
+                break
+    while difference < 0:
+        for index in priority:
+            if allocation[index] > 1:
+                allocation[index] -= 1
+                difference += 1
+            if difference == 0:
+                break
+    return tuple(allocation)
+
+
+def _this_week_plan(
+    brief: ProjectBrief, metrics: dict[str, int], signals: set[str]
+) -> dict[str, Any]:
+    weekly_hours = max(1, min(brief.hours_per_week, 18))
+    framing_hours, build_hours, test_hours, decide_hours = _allocate_week_hours(weekly_hours)
+
+    if metrics["evidence"] < 60:
+        focus = "Find proof before adding surface area"
+        checkpoint = "End the week with one external signal that either confirms or weakens the promise."
+    elif metrics["risk"] >= 60:
+        focus = "Retire the riskiest assumption"
+        checkpoint = "End the week knowing whether the fragile dependency works in representative cases."
+    elif brief.scope == "ambitious":
+        focus = "Compress scope into one path"
+        checkpoint = "End the week with one removed feature family and one complete release path."
+    else:
+        focus = "Ship one visible learning loop"
+        checkpoint = "End the week with a tested happy path and one clear next decision."
+
+    build_action = "Build the smallest end-to-end happy path."
+    test_action = "Test with three target users or representative scenarios."
+    if {"api", "automate"}.intersection(signals):
+        build_action = "Wire one input-to-output automation path with a manual fallback."
+        test_action = "Run ten cases, including two failures, and record recovery steps."
+    elif {"dashboard", "data"}.intersection(signals):
+        build_action = "Build one decision-focused dashboard view with realistic data."
+        test_action = "Ask three users what next action the dashboard suggests."
+
+    return {
+        "focus": focus,
+        "availableHours": weekly_hours,
+        "checkpoint": checkpoint,
+        "blocks": [
+            {
+                "label": "Frame",
+                "hours": framing_hours,
+                "action": "Write the user promise, success signal, and non-goals.",
+            },
+            {"label": "Build", "hours": build_hours, "action": build_action},
+            {"label": "Test", "hours": test_hours, "action": test_action},
+            {
+                "label": "Decide",
+                "hours": decide_hours,
+                "action": "Re-score, compare against the baseline, and choose one next move.",
+            },
+        ],
+    }
 
 
 def _recommended_lever(brief: ProjectBrief, metrics: dict[str, int]) -> dict[str, str]:

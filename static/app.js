@@ -40,6 +40,13 @@ const secondaryResults = document.querySelector("#secondaryResults");
 const leverSection = document.querySelector("#leverSection");
 const impactSection = document.querySelector("#impactSection");
 const impactList = document.querySelector("#impactList");
+const scenarioSection = document.querySelector("#scenarioSection");
+const scenarioGrid = document.querySelector("#scenarioGrid");
+const weekPlanSection = document.querySelector("#weekPlanSection");
+const weekPlanFocus = document.querySelector("#weekPlanFocus");
+const weekPlanMeta = document.querySelector("#weekPlanMeta");
+const weekPlanGrid = document.querySelector("#weekPlanGrid");
+const weekCheckpoint = document.querySelector("#weekCheckpoint");
 const leverMetric = document.querySelector("#leverMetric");
 const leverTitle = document.querySelector("#leverTitle");
 const leverAction = document.querySelector("#leverAction");
@@ -173,6 +180,8 @@ function renderResult(result) {
   leverSection.hidden = false;
 
   renderImpactMoves(result.highestImpactMoves || []);
+  renderScenarioVariants(result.scenarioVariants || []);
+  renderWeekPlan(result.thisWeekPlan);
   nextSteps.replaceChildren(...result.nextSteps.map((step) => listItem(step)));
   risks.replaceChildren(...result.risks.map((risk) => listItem(risk)));
   stopConditions.replaceChildren(...(result.stopConditions || []).map((condition) => listItem(condition)));
@@ -208,6 +217,61 @@ function renderResult(result) {
   downloadMemoButton.disabled = false;
   shareLinkButton.disabled = false;
   updateBaselineButton(result);
+}
+
+function renderScenarioVariants(variants) {
+  scenarioGrid.replaceChildren(
+    ...variants.map((variant) => {
+      const item = document.createElement("article");
+      const label = document.createElement("span");
+      const score = document.createElement("strong");
+      const verdictText = document.createElement("em");
+      const detail = document.createElement("p");
+      const changes = document.createElement("ul");
+
+      item.className = "scenario-card";
+      item.dataset.delta = variant.delta > 0 ? "up" : variant.delta < 0 ? "down" : "flat";
+      label.textContent = variant.label;
+      score.textContent = `${variant.delta > 0 ? "+" : ""}${variant.delta}`;
+      verdictText.textContent = `${variant.score}/100 - ${variant.verdict}`;
+      detail.textContent = variant.rationale;
+      changes.replaceChildren(...variant.changes.map((change) => listItem(change)));
+
+      item.append(label, score, verdictText, detail, changes);
+      return item;
+    }),
+  );
+  scenarioSection.hidden = !variants.length;
+}
+
+function renderWeekPlan(plan) {
+  if (!plan?.blocks?.length) {
+    weekPlanSection.hidden = true;
+    weekPlanGrid.replaceChildren();
+    weekPlanFocus.textContent = "";
+    weekPlanMeta.textContent = "";
+    weekCheckpoint.textContent = "";
+    return;
+  }
+
+  weekPlanFocus.textContent = plan.focus;
+  weekPlanMeta.textContent = `${plan.availableHours} ${plan.availableHours === 1 ? "hour" : "hours"}`;
+  weekCheckpoint.textContent = plan.checkpoint;
+  weekPlanGrid.replaceChildren(
+    ...plan.blocks.map((block) => {
+      const item = document.createElement("article");
+      const label = document.createElement("strong");
+      const hours = document.createElement("span");
+      const action = document.createElement("p");
+      item.className = "week-block";
+      label.textContent = block.label;
+      hours.textContent = `${block.hours}h`;
+      action.textContent = block.action;
+      item.append(label, hours, action);
+      return item;
+    }),
+  );
+  weekPlanSection.hidden = false;
 }
 
 function renderImpactMoves(moves) {
@@ -451,6 +515,13 @@ clearButton.addEventListener("click", () => {
   questions.replaceChildren();
   impactList.replaceChildren();
   impactSection.hidden = true;
+  scenarioGrid.replaceChildren();
+  scenarioSection.hidden = true;
+  weekPlanGrid.replaceChildren();
+  weekPlanSection.hidden = true;
+  weekPlanFocus.textContent = "";
+  weekPlanMeta.textContent = "";
+  weekCheckpoint.textContent = "";
   experimentGrid.replaceChildren();
   experimentSection.hidden = true;
   leverSection.hidden = true;

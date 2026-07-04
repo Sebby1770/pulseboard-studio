@@ -4,6 +4,25 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [0.9.0] - 2026-07-04
+
+### Added
+
+- Scenario Lab outputs that compare lean-launch, proof-sprint, and scope-drift versions of a brief.
+- A This Week Plan that turns each score into four time-boxed blocks and a checkpoint.
+- Browser rendering and Markdown memo exports for scenario variants and weekly plans.
+- Test coverage for scenario simulations, weekly hour allocation, memo exports, and restored older snapshots.
+
+### Changed
+
+- Updated the scoring model to `7.0` and the application to `0.9.0`.
+- The result surface now explains score movement through both ranked moves and alternate scenario shapes.
+
+### Fixed
+
+- Restored older history snapshots now receive safe defaults for v0.9 scenario and weekly-plan fields.
+- Tiny weekly hour budgets no longer over-allocate time across the four plan blocks.
+
 ## [0.8.0] - 2026-06-26
 
 ### Added
@@ -193,6 +212,7 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[0.9.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.9.0
 [0.8.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.7.0
 [0.6.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.6.0

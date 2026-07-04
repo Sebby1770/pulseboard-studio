@@ -37,7 +37,7 @@ class LocalServerTests(unittest.TestCase):
         payload = json.loads(body)
 
         self.assertEqual(status, 200)
-        self.assertEqual(payload["modelVersion"], "6.0")
+        self.assertEqual(payload["modelVersion"], "7.0")
         self.assertEqual(headers["cache-control"], "no-store")
 
     def test_post_requires_json_content_type(self):

@@ -200,6 +200,8 @@ export function buildMemo(payload, result, comparison = null) {
     .join("\n");
   const questionRows = result.questions.map((question) => `- ${question}`).join("\n");
   const impactBlock = buildImpactBlock(result.highestImpactMoves);
+  const scenarioBlock = buildScenarioBlock(result.scenarioVariants);
+  const weekPlanBlock = buildWeekPlanBlock(result.thisWeekPlan);
   const stopConditionsBlock = buildStopConditionsBlock(result.stopConditions);
   const comparisonBlock = buildComparisonBlock(comparison);
   return `# PulseBoard Decision Memo
@@ -228,6 +230,7 @@ ${lever.action}
 ${lever.rationale}
 
 ${impactBlock}
+${scenarioBlock}
 ## Scorecard
 
 ${metricRows}
@@ -242,6 +245,7 @@ ${metricRows}
 
 ${timelineRows}
 
+${weekPlanBlock}
 ## Next Steps
 
 ${steps}
@@ -278,6 +282,39 @@ function buildStopConditionsBlock(conditions = []) {
   return `## Stop Conditions
 
 ${rows}
+
+`;
+}
+
+function buildScenarioBlock(variants = []) {
+  if (!Array.isArray(variants) || !variants.length) return "";
+  const rows = variants
+    .map((variant) => {
+      const changes = Array.isArray(variant.changes) ? variant.changes.join("; ") : "";
+      return `- **${variant.label}:** ${formatDelta(variant.delta)} to ${variant.score}/100. ${variant.rationale} ${changes}`;
+    })
+    .join("\n");
+  return `## Scenario Lab
+
+${rows}
+
+`;
+}
+
+function buildWeekPlanBlock(plan) {
+  if (!plan || !Array.isArray(plan.blocks) || !plan.blocks.length) return "";
+  const blocks = plan.blocks
+    .map((block) => `- **${block.label} (${block.hours}h):** ${block.action}`)
+    .join("\n");
+  return `## This Week Plan
+
+**Focus:** ${plan.focus}
+
+**Available hours:** ${plan.availableHours}
+
+${blocks}
+
+**Checkpoint:** ${plan.checkpoint}
 
 `;
 }
@@ -353,6 +390,8 @@ function withResultDefaults(result) {
     scoreRange: result.scoreRange || defaultScoreRange(result),
     recommendedLever: result.recommendedLever || DEFAULT_LEVER,
     highestImpactMoves: Array.isArray(result.highestImpactMoves) ? result.highestImpactMoves : [],
+    scenarioVariants: Array.isArray(result.scenarioVariants) ? result.scenarioVariants : [],
+    thisWeekPlan: result.thisWeekPlan || null,
     stopConditions: Array.isArray(result.stopConditions) ? result.stopConditions : [],
   };
 }
