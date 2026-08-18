@@ -52,7 +52,12 @@ EVIDENCE_MARGINS = {
     "users": 3,
 }
 
-MODEL_VERSION = "7.0"
+MODEL_VERSION = "8.0"
+
+GO_THRESHOLD = 72
+NO_GO_THRESHOLD = 42
+SCOPE_ORDER = ("tiny", "focused", "ambitious")
+EVIDENCE_ORDER = ("idea", "signals", "users")
 
 
 @dataclass(frozen=True)
@@ -92,6 +97,9 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
         "timeline": _timeline(brief),
         "smallestExperiment": _smallest_experiment(brief, signals),
         "questions": _questions(brief, signals),
+        "goNoGo": _go_no_go(brief, score, metrics),
+        "killCriteria": _kill_criteria(brief, metrics),
+        "sensitivityTable": _sensitivity_table(brief, score),
     }
 
 
@@ -703,3 +711,207 @@ def _score_range(score: int, evidence: str) -> dict[str, int]:
         "high": min(100, score + margin),
         "margin": margin,
     }
+
+
+def _go_no_go(
+    brief: ProjectBrief, score: int, metrics: dict[str, int]
+) -> dict[str, Any]:
+    """Return a ship / hold / kill call based on score and evidence."""
+
+    if score < NO_GO_THRESHOLD:
+        decision = "NO-GO"
+        reason = (
+            "The score is below the reshape line. Narrow the promise and "
+            "re-score before spending another build week."
+        )
+    elif brief.evidence == "idea" or score < GO_THRESHOLD:
+        decision = "CONDITIONAL"
+        if brief.evidence == "idea":
+            reason = (
+                "Do not commit a full build yet. Collect one external signal "
+                "and re-score before expanding scope."
+            )
+        else:
+            reason = (
+                "The brief can proceed as a time-boxed prototype, but only if "
+                "the first week stays on one workflow."
+            )
+    else:
+        decision = "GO"
+        reason = (
+            "Clarity, capacity, and evidence are strong enough to ship a "
+            "narrow first version this cycle."
+        )
+
+    if decision != "NO-GO" and metrics["risk"] >= 70 and brief.deadline_days <= 14:
+        decision = "CONDITIONAL"
+        reason = (
+            "Risk is high and the deadline is tight. Prove the fragile "
+            "assumption before treating this as a go."
+        )
+
+    return {
+        "decision": decision,
+        "reason": reason,
+        "thresholds": {"go": GO_THRESHOLD, "noGo": NO_GO_THRESHOLD},
+    }
+
+
+def _kill_criteria(brief: ProjectBrief, metrics: dict[str, int]) -> list[str]:
+    """Return concrete conditions that should end the current project shape."""
+
+    criteria = [
+        "Kill this shape if the smallest experiment fails twice with the same user type.",
+        "Kill this shape if no target user will spend 15 minutes on a prototype in the next two weeks.",
+    ]
+    if brief.evidence == "idea":
+        criteria.insert(
+            0,
+            "Kill this idea if five target conversations produce zero unprompted problem recognition.",
+        )
+    if brief.scope == "ambitious":
+        criteria.append(
+            "Kill the current shape if a one-workflow slice cannot be described in one sentence."
+        )
+    if brief.deadline_days <= 14:
+        criteria.append(
+            "Kill the current deadline if the happy path is not testable within seven days."
+        )
+    if metrics["risk"] >= 60:
+        criteria.append(
+            "Kill the build if the highest-risk dependency cannot be demonstrated once this week."
+        )
+    # Preserve order while dropping duplicates if the inserts overlap.
+    unique: list[str] = []
+    seen: set[str] = set()
+    for item in criteria:
+        if item in seen:
+            continue
+        seen.add(item)
+        unique.append(item)
+    return unique[:4]
+
+
+def _sensitivity_table(brief: ProjectBrief, current_score: int) -> list[dict[str, Any]]:
+    """Show the score change from one-step moves on each controllable input."""
+
+    candidates: list[tuple[str, str, str, str, ProjectBrief]] = []
+
+    scope_index = SCOPE_ORDER.index(brief.scope)
+    if scope_index > 0:
+        narrower = SCOPE_ORDER[scope_index - 1]
+        candidates.append(
+            ("scope", "narrower", brief.scope, narrower, replace(brief, scope=narrower))
+        )
+    if scope_index < len(SCOPE_ORDER) - 1:
+        wider = SCOPE_ORDER[scope_index + 1]
+        candidates.append(
+            ("scope", "wider", brief.scope, wider, replace(brief, scope=wider))
+        )
+
+    more_hours = min(60, brief.hours_per_week + 4)
+    fewer_hours = max(1, brief.hours_per_week - 4)
+    if more_hours != brief.hours_per_week:
+        candidates.append(
+            (
+                "hoursPerWeek",
+                "more-capacity",
+                str(brief.hours_per_week),
+                str(more_hours),
+                replace(brief, hours_per_week=more_hours),
+            )
+        )
+    if fewer_hours != brief.hours_per_week:
+        candidates.append(
+            (
+                "hoursPerWeek",
+                "less-capacity",
+                str(brief.hours_per_week),
+                str(fewer_hours),
+                replace(brief, hours_per_week=fewer_hours),
+            )
+        )
+
+    longer = min(180, brief.deadline_days + 14)
+    shorter = max(1, brief.deadline_days - 14)
+    if longer != brief.deadline_days:
+        candidates.append(
+            (
+                "deadlineDays",
+                "more-time",
+                str(brief.deadline_days),
+                str(longer),
+                replace(brief, deadline_days=longer),
+            )
+        )
+    if shorter != brief.deadline_days:
+        candidates.append(
+            (
+                "deadlineDays",
+                "less-time",
+                str(brief.deadline_days),
+                str(shorter),
+                replace(brief, deadline_days=shorter),
+            )
+        )
+
+    evidence_index = EVIDENCE_ORDER.index(brief.evidence)
+    if evidence_index < len(EVIDENCE_ORDER) - 1:
+        stronger = EVIDENCE_ORDER[evidence_index + 1]
+        candidates.append(
+            (
+                "evidence",
+                "stronger",
+                brief.evidence,
+                stronger,
+                replace(brief, evidence=stronger),
+            )
+        )
+    if evidence_index > 0:
+        weaker = EVIDENCE_ORDER[evidence_index - 1]
+        candidates.append(
+            (
+                "evidence",
+                "weaker",
+                brief.evidence,
+                weaker,
+                replace(brief, evidence=weaker),
+            )
+        )
+
+    if brief.confidence < 5:
+        candidates.append(
+            (
+                "confidence",
+                "higher",
+                str(brief.confidence),
+                str(brief.confidence + 1),
+                replace(brief, confidence=brief.confidence + 1),
+            )
+        )
+    if brief.confidence > 1:
+        candidates.append(
+            (
+                "confidence",
+                "lower",
+                str(brief.confidence),
+                str(brief.confidence - 1),
+                replace(brief, confidence=brief.confidence - 1),
+            )
+        )
+
+    rows: list[dict[str, Any]] = []
+    for input_name, direction, current, proposed, projected_brief in candidates:
+        projected_score, _, _ = _score_brief(projected_brief)
+        rows.append(
+            {
+                "input": input_name,
+                "direction": direction,
+                "from": current,
+                "to": proposed,
+                "score": projected_score,
+                "delta": projected_score - current_score,
+            }
+        )
+    rows.sort(key=lambda row: (-abs(row["delta"]), row["input"], row["direction"]))
+    return rows

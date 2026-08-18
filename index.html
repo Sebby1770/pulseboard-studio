@@ -126,12 +126,13 @@
         </form>
 
         <section class="panel result-panel" aria-live="polite">
-          <div class="panel-bar"><strong>Result</strong><span id="modelVersion">Engine 7.0</span></div>
+          <div class="panel-bar"><strong>Result</strong><span id="modelVersion">Engine 8.0</span></div>
           <div class="panel-content result-content">
             <div class="score-header">
               <div>
                 <p class="eyebrow">Current read</p>
                 <h2 id="verdict">Ready when you are</h2>
+                <p class="go-nogo" id="goNoGo" hidden></p>
                 <p class="score-range" id="scoreRange" hidden></p>
               </div>
               <div class="score-tools">
@@ -196,6 +197,16 @@
               <div class="scenario-grid" id="scenarioGrid"></div>
             </section>
 
+            <section class="sensitivity-section" id="sensitivitySection" hidden>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Sensitivity table</p>
+                  <h3>See which one-step change moves the score.</h3>
+                </div>
+              </div>
+              <div class="sensitivity-list" id="sensitivityList"></div>
+            </section>
+
             <section class="week-plan-section" id="weekPlanSection" hidden>
               <div class="section-heading">
                 <div>
@@ -236,6 +247,10 @@
                 <h3>Stop conditions</h3>
                 <ul id="stopConditions" class="stack-list stop-list"></ul>
               </div>
+              <div>
+                <h3>Kill criteria</h3>
+                <ul id="killCriteria" class="stack-list stop-list"></ul>
+              </div>
             </div>
 
             <div class="result-columns secondary-results" id="secondaryResults" hidden>
@@ -261,7 +276,7 @@
       </section>
 
       <footer class="app-footer">
-        <span>PulseBoard Studio v0.9.0</span>
+        <span>PulseBoard Studio v1.0.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>

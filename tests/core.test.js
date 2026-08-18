@@ -81,6 +81,24 @@ const result = {
   stopConditions: [
     "Pause if two consecutive tests miss the smallest experiment's success signal.",
   ],
+  goNoGo: {
+    decision: "CONDITIONAL",
+    reason: "Collect one external signal before a full build.",
+    thresholds: { go: 72, noGo: 42 },
+  },
+  killCriteria: [
+    "Kill this shape if the smallest experiment fails twice with the same user type.",
+  ],
+  sensitivityTable: [
+    {
+      input: "scope",
+      direction: "narrower",
+      from: "focused",
+      to: "tiny",
+      score: 86,
+      delta: 4,
+    },
+  ],
   smallestExperiment: {
     build: "Build one dashboard view.",
     test: "Test it with three users.",
@@ -139,6 +157,9 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   delete oldResult.scenarioVariants;
   delete oldResult.thisWeekPlan;
   delete oldResult.stopConditions;
+  delete oldResult.goNoGo;
+  delete oldResult.killCriteria;
+  delete oldResult.sensitivityTable;
 
   const restored = migrateHistory(
     JSON.stringify([
@@ -162,6 +183,9 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   assert.deepEqual(restored[0].result.scenarioVariants, []);
   assert.equal(restored[0].result.thisWeekPlan, null);
   assert.deepEqual(restored[0].result.stopConditions, []);
+  assert.equal(restored[0].result.goNoGo, null);
+  assert.deepEqual(restored[0].result.killCriteria, []);
+  assert.deepEqual(restored[0].result.sensitivityTable, []);
 });
 
 test("scenario comparison treats lower risk as an improvement", () => {
@@ -305,6 +329,11 @@ test("decision memo includes the lever and execution timeline", () => {
   assert.match(memo, /\*\*Day 1:\*\* Define the success signal\./);
   assert.match(memo, /## Stop Conditions/);
   assert.match(memo, /Pause if two consecutive tests/);
+  assert.match(memo, /## Go \/ No-Go/);
+  assert.match(memo, /CONDITIONAL/);
+  assert.match(memo, /## Kill Criteria/);
+  assert.match(memo, /## Sensitivity Table/);
+  assert.match(memo, /focused -> tiny/);
 });
 
 test("decision memo carries scenario comparison context", () => {
