@@ -203,6 +203,9 @@ export function buildMemo(payload, result, comparison = null) {
   const scenarioBlock = buildScenarioBlock(result.scenarioVariants);
   const weekPlanBlock = buildWeekPlanBlock(result.thisWeekPlan);
   const stopConditionsBlock = buildStopConditionsBlock(result.stopConditions);
+  const goNoGoBlock = buildGoNoGoBlock(result.goNoGo);
+  const killCriteriaBlock = buildKillCriteriaBlock(result.killCriteria);
+  const sensitivityBlock = buildSensitivityBlock(result.sensitivityTable);
   const comparisonBlock = buildComparisonBlock(comparison);
   return `# PulseBoard Decision Memo
 
@@ -220,7 +223,7 @@ export function buildMemo(payload, result, comparison = null) {
 
 ${result.summary}
 
-${comparisonBlock}
+${goNoGoBlock}${comparisonBlock}
 ## Best Lever
 
 **${lever.title}** (${lever.metric})
@@ -230,7 +233,7 @@ ${lever.action}
 ${lever.rationale}
 
 ${impactBlock}
-${scenarioBlock}
+${scenarioBlock}${sensitivityBlock}
 ## Scorecard
 
 ${metricRows}
@@ -254,7 +257,7 @@ ${steps}
 
 ${riskRows}
 
-${stopConditionsBlock}
+${stopConditionsBlock}${killCriteriaBlock}
 ## Questions To Answer
 
 ${questionRows}
@@ -282,6 +285,37 @@ function buildStopConditionsBlock(conditions = []) {
   return `## Stop Conditions
 
 ${rows}
+
+`;
+}
+
+function buildGoNoGoBlock(goNoGo) {
+  if (!goNoGo?.decision) return "";
+  return `## Go / No-Go
+
+**${goNoGo.decision}** — ${goNoGo.reason}
+
+`;
+}
+
+function buildKillCriteriaBlock(criteria = []) {
+  if (!Array.isArray(criteria) || !criteria.length) return "";
+  const rows = criteria.map((item) => `- ${item}`).join("\n");
+  return `## Kill Criteria
+
+${rows}
+
+`;
+}
+
+function buildSensitivityBlock(rows = []) {
+  if (!Array.isArray(rows) || !rows.length) return "";
+  const lines = rows
+    .map((row) => `- **${row.input} ${row.direction}:** ${row.from} -> ${row.to} (${formatDelta(row.delta)} to ${row.score})`)
+    .join("\n");
+  return `## Sensitivity Table
+
+${lines}
 
 `;
 }
@@ -393,6 +427,9 @@ function withResultDefaults(result) {
     scenarioVariants: Array.isArray(result.scenarioVariants) ? result.scenarioVariants : [],
     thisWeekPlan: result.thisWeekPlan || null,
     stopConditions: Array.isArray(result.stopConditions) ? result.stopConditions : [],
+    goNoGo: result.goNoGo || null,
+    killCriteria: Array.isArray(result.killCriteria) ? result.killCriteria : [],
+    sensitivityTable: Array.isArray(result.sensitivityTable) ? result.sensitivityTable : [],
   };
 }
 

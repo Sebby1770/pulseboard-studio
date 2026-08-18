@@ -4,7 +4,7 @@ PulseBoard Studio is a small Python and JavaScript app for scoring project ideas
 
 The browser UI collects a project brief, calls a Python API, and renders a score, risks, and a practical next-step plan. It is designed to run locally with the Python standard library and to deploy cleanly on Vercel as static files plus a Python serverless function.
 
-Version 0.9 adds a Scenario Lab and This Week Plan so a score becomes a choice map and a schedulable next sprint. See [CHANGELOG.md](CHANGELOG.md) for release history.
+Version 1.0 adds a go / no-go call, kill criteria, and a sensitivity table so a score becomes a ship-or-kill decision, not just a plan. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 After an analysis, use **Share link** to copy a URL containing the project brief. Scenario data lives after the URL `#`, so it is restored in the browser without being included in the initial HTTP request. The recipient can then analyze it against the current Python scoring model.
 
@@ -63,4 +63,4 @@ This runs a JavaScript syntax check and Python unit tests.
 }
 ```
 
-The response includes a score, likely range, evidence grade, verdict, metrics, risks, recommendation, ranked highest-impact moves, scenario variants, a this-week plan, stop conditions, and timeline.
+The response includes a score, likely range, evidence grade, verdict, go/no-go decision, metrics, risks, recommendation, ranked highest-impact moves, scenario variants, a sensitivity table, a this-week plan, stop conditions, kill criteria, and timeline.

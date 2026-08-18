@@ -24,7 +24,10 @@ class EngineTests(unittest.TestCase):
         self.assertIn("api", result["signals"])
         self.assertEqual(set(result["smallestExperiment"]), {"build", "test", "success"})
         self.assertGreaterEqual(len(result["questions"]), 3)
-        self.assertEqual(result["modelVersion"], "7.0")
+        self.assertEqual(result["modelVersion"], "8.0")
+        self.assertIn(result["goNoGo"]["decision"], {"GO", "CONDITIONAL", "NO-GO"})
+        self.assertGreaterEqual(len(result["killCriteria"]), 2)
+        self.assertGreaterEqual(len(result["sensitivityTable"]), 4)
         self.assertEqual(result["metrics"]["evidence"], 60)
         self.assertEqual(set(result["scoreRange"]), {"low", "high", "margin"})
         self.assertEqual(
@@ -223,6 +226,71 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(plan["availableHours"], 1)
         self.assertEqual(sum(block["hours"] for block in plan["blocks"]), 1)
         self.assertEqual([block["hours"] for block in plan["blocks"]], [1, 0, 0, 0])
+
+    def test_go_nogo_requires_evidence_for_a_full_go(self):
+        idea_only = analyse_project(
+            {
+                "idea": "Build a focused API dashboard for one customer workflow.",
+                "goal": "Ship a measurable prototype for one user.",
+                "deadlineDays": 30,
+                "hoursPerWeek": 10,
+                "confidence": 5,
+                "scope": "tiny",
+                "evidence": "idea",
+            }
+        )
+        proven = analyse_project(
+            {
+                "idea": "Build a focused API dashboard for one customer workflow.",
+                "goal": "Ship a measurable prototype for one user.",
+                "deadlineDays": 30,
+                "hoursPerWeek": 10,
+                "confidence": 5,
+                "scope": "tiny",
+                "evidence": "users",
+            }
+        )
+        weak = analyse_project(
+            {
+                "idea": "x",
+                "deadlineDays": 1,
+                "hoursPerWeek": 1,
+                "confidence": 1,
+                "scope": "ambitious",
+                "evidence": "idea",
+            }
+        )
+
+        self.assertEqual(idea_only["goNoGo"]["decision"], "CONDITIONAL")
+        self.assertIn(proven["goNoGo"]["decision"], {"GO", "CONDITIONAL"})
+        if proven["score"] >= 72:
+            self.assertEqual(proven["goNoGo"]["decision"], "GO")
+        self.assertEqual(weak["goNoGo"]["decision"], "NO-GO")
+        self.assertIn("Kill this idea", idea_only["killCriteria"][0])
+
+    def test_sensitivity_table_recomputes_real_score_deltas(self):
+        result = analyse_project(
+            {
+                "idea": "Build a focused API dashboard for one customer workflow.",
+                "goal": "Ship a measurable prototype.",
+                "deadlineDays": 21,
+                "hoursPerWeek": 8,
+                "confidence": 4,
+                "scope": "focused",
+                "evidence": "signals",
+            }
+        )
+
+        rows = result["sensitivityTable"]
+        self.assertTrue(rows)
+        self.assertTrue(all({"input", "direction", "from", "to", "score", "delta"} <= set(row) for row in rows))
+        self.assertTrue(any(row["input"] == "scope" for row in rows))
+        self.assertTrue(any(row["input"] == "evidence" for row in rows))
+        self.assertTrue(
+            all(row["score"] == result["score"] + row["delta"] for row in rows)
+        )
+        stronger = next(row for row in rows if row["input"] == "evidence" and row["direction"] == "stronger")
+        self.assertGreater(stronger["delta"], 0)
 
 
 if __name__ == "__main__":

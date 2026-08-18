@@ -4,6 +4,20 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [1.0.0] - 2026-08-19
+
+### Added
+
+- A go / no-go call on every score: `GO`, `CONDITIONAL`, or `NO-GO`, with the reason and the numeric thresholds.
+- Kill criteria that name when the current project shape should be abandoned, not just paused.
+- A sensitivity table that recomputes the score after one-step changes to scope, hours, deadline, evidence, and confidence.
+- Browser rendering and Markdown memo exports for the decision call, kill criteria, and sensitivity rows.
+
+### Changed
+
+- Updated the scoring model to `8.0` and the application to `1.0.0`.
+- The result surface now ends with a ship-or-kill recommendation instead of only a qualitative verdict.
+
 ## [0.9.0] - 2026-07-04
 
 ### Added
@@ -212,6 +226,7 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[1.0.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v1.0.0
 [0.9.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.9.0
 [0.8.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.8.0
 [0.7.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.7.0

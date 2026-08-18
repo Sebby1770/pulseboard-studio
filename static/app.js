@@ -31,6 +31,10 @@ const signalRow = document.querySelector("#signalRow");
 const nextSteps = document.querySelector("#nextSteps");
 const risks = document.querySelector("#risks");
 const stopConditions = document.querySelector("#stopConditions");
+const killCriteria = document.querySelector("#killCriteria");
+const goNoGo = document.querySelector("#goNoGo");
+const sensitivitySection = document.querySelector("#sensitivitySection");
+const sensitivityList = document.querySelector("#sensitivityList");
 const timeline = document.querySelector("#timeline");
 const questions = document.querySelector("#questions");
 const experimentSection = document.querySelector("#experimentSection");
@@ -137,6 +141,15 @@ function renderResult(result) {
   resultPanel.dataset.ready = "true";
   modelVersion.textContent = `Engine ${result.modelVersion || "ready"}`;
   verdict.textContent = result.verdict;
+  if (result.goNoGo) {
+    goNoGo.textContent = `${result.goNoGo.decision}: ${result.goNoGo.reason}`;
+    goNoGo.hidden = false;
+    goNoGo.dataset.decision = result.goNoGo.decision;
+  } else {
+    goNoGo.textContent = "";
+    goNoGo.hidden = true;
+    delete goNoGo.dataset.decision;
+  }
   summary.textContent = result.summary;
   evidenceNote.textContent = `${result.evidenceGrade.label}: ${result.evidenceGrade.detail}`;
   evidenceNote.hidden = false;
@@ -181,10 +194,12 @@ function renderResult(result) {
 
   renderImpactMoves(result.highestImpactMoves || []);
   renderScenarioVariants(result.scenarioVariants || []);
+  renderSensitivity(result.sensitivityTable || []);
   renderWeekPlan(result.thisWeekPlan);
   nextSteps.replaceChildren(...result.nextSteps.map((step) => listItem(step)));
   risks.replaceChildren(...result.risks.map((risk) => listItem(risk)));
   stopConditions.replaceChildren(...(result.stopConditions || []).map((condition) => listItem(condition)));
+  killCriteria.replaceChildren(...(result.killCriteria || []).map((item) => listItem(item)));
   questions.replaceChildren(...result.questions.map((question) => listItem(question)));
   timeline.replaceChildren(
     ...result.timeline.map((item) => {
@@ -242,6 +257,32 @@ function renderScenarioVariants(variants) {
     }),
   );
   scenarioSection.hidden = !variants.length;
+}
+
+function renderSensitivity(rows) {
+  if (!rows.length) {
+    sensitivitySection.hidden = true;
+    sensitivityList.replaceChildren();
+    return;
+  }
+
+  sensitivityList.replaceChildren(
+    ...rows.map((row) => {
+      const item = document.createElement("article");
+      const label = document.createElement("span");
+      const score = document.createElement("strong");
+      const detail = document.createElement("p");
+      const sign = row.delta > 0 ? "+" : "";
+      item.className = "sensitivity-row";
+      item.dataset.delta = row.delta > 0 ? "up" : row.delta < 0 ? "down" : "flat";
+      label.textContent = `${row.input} ${row.direction}`;
+      score.textContent = `${sign}${row.delta}`;
+      detail.textContent = `${row.from} -> ${row.to} lands at ${row.score}/100`;
+      item.append(label, score, detail);
+      return item;
+    }),
+  );
+  sensitivitySection.hidden = false;
 }
 
 function renderWeekPlan(plan) {
@@ -501,6 +542,12 @@ clearButton.addEventListener("click", () => {
   nextSteps.replaceChildren();
   risks.replaceChildren();
   stopConditions.replaceChildren();
+  killCriteria.replaceChildren();
+  goNoGo.textContent = "";
+  goNoGo.hidden = true;
+  delete goNoGo.dataset.decision;
+  sensitivityList.replaceChildren();
+  sensitivitySection.hidden = true;
   verdict.textContent = "Ready when you are";
   summary.textContent =
     "Add a project idea and PulseBoard will score clarity, feasibility, momentum, evidence, and risk.";
