@@ -24,10 +24,12 @@ class EngineTests(unittest.TestCase):
         self.assertIn("api", result["signals"])
         self.assertEqual(set(result["smallestExperiment"]), {"build", "test", "success"})
         self.assertGreaterEqual(len(result["questions"]), 3)
-        self.assertEqual(result["modelVersion"], "8.0")
+        self.assertEqual(result["modelVersion"], "9.0")
         self.assertIn(result["goNoGo"]["decision"], {"GO", "CONDITIONAL", "NO-GO"})
         self.assertGreaterEqual(len(result["killCriteria"]), 2)
         self.assertGreaterEqual(len(result["sensitivityTable"]), 4)
+        self.assertEqual(len(result["evidenceLadder"]), 3)
+        self.assertTrue(any(rung["current"] for rung in result["evidenceLadder"]))
         self.assertEqual(result["metrics"]["evidence"], 60)
         self.assertEqual(set(result["scoreRange"]), {"low", "high", "margin"})
         self.assertEqual(
@@ -291,6 +293,50 @@ class EngineTests(unittest.TestCase):
         )
         stronger = next(row for row in rows if row["input"] == "evidence" and row["direction"] == "stronger")
         self.assertGreater(stronger["delta"], 0)
+
+    def test_evidence_ladder_marks_current_rung_and_improves_with_proof(self):
+        result = analyse_project(
+            {
+                "idea": "Build a focused API dashboard for one customer workflow.",
+                "goal": "Ship a measurable prototype.",
+                "deadlineDays": 30,
+                "hoursPerWeek": 8,
+                "confidence": 4,
+                "scope": "focused",
+                "evidence": "idea",
+            }
+        )
+
+        ladder = {rung["evidence"]: rung for rung in result["evidenceLadder"]}
+        self.assertEqual(set(ladder), {"idea", "signals", "users"})
+        self.assertTrue(ladder["idea"]["current"])
+        self.assertFalse(ladder["users"]["current"])
+        self.assertGreater(ladder["users"]["score"], ladder["idea"]["score"])
+        self.assertEqual(ladder["idea"]["decision"], "CONDITIONAL")
+
+    def test_flip_points_find_a_change_that_changes_the_call(self):
+        result = analyse_project(
+            {
+                "idea": "Build a focused API dashboard for one customer workflow.",
+                "goal": "Ship a measurable prototype for one user.",
+                "deadlineDays": 30,
+                "hoursPerWeek": 10,
+                "confidence": 5,
+                "scope": "tiny",
+                "evidence": "users",
+            }
+        )
+
+        self.assertEqual(result["goNoGo"]["decision"], "GO")
+
+        points = result["flipPoints"]
+        self.assertTrue(points)
+        evidence_flip = next(point for point in points if point["input"] == "evidence")
+        self.assertEqual(evidence_flip["from"], "users")
+        self.assertEqual(evidence_flip["to"], "idea")
+        self.assertEqual(evidence_flip["decision"], "CONDITIONAL")
+        self.assertEqual(evidence_flip["currentDecision"], "GO")
+        self.assertEqual(evidence_flip["score"], result["score"] + evidence_flip["delta"])
 
 
 if __name__ == "__main__":

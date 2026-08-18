@@ -4,6 +4,18 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [1.1.0] - 2026-08-19
+
+### Added
+
+- An evidence ladder that rescores the same brief at idea, signals, and users.
+- Flip points: the smallest change to hours, deadline, scope, evidence, or confidence that changes the go / no-go call.
+- Browser rendering and Markdown memo exports for both.
+
+### Changed
+
+- Updated the scoring model to `9.0` and the application to `1.1.0`.
+
 ## [1.0.0] - 2026-08-19
 
 ### Added
@@ -226,6 +238,7 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[1.1.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v1.0.0
 [0.9.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.9.0
 [0.8.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.8.0

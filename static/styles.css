@@ -728,6 +728,8 @@ input[type="range"] {
 
 .scenario-section,
 .sensitivity-section,
+.ladder-section,
+.flip-section,
 .week-plan-section {
   border-bottom: 1px solid var(--ink);
   padding: 18px 0;
@@ -1070,6 +1072,8 @@ input[type="range"] {
 .result-panel[data-ready="true"] .strategy-grid,
 .result-panel[data-ready="true"] .scenario-section,
 .result-panel[data-ready="true"] .sensitivity-section,
+.result-panel[data-ready="true"] .ladder-section,
+.result-panel[data-ready="true"] .flip-section,
 .result-panel[data-ready="true"] .week-plan-section,
 .result-panel[data-ready="true"] .experiment-section {
   animation: reveal 360ms ease both;
@@ -1139,6 +1143,45 @@ input[type="range"] {
 }
 
 .sensitivity-row[data-delta="down"] strong {
+  color: var(--coral);
+}
+
+.ladder-list,
+.flip-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ladder-rung,
+.flip-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+}
+
+.ladder-rung em,
+.flip-row p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-style: normal;
+}
+
+.ladder-rung[data-current="true"] {
+  border-color: var(--ink);
+}
+
+.ladder-rung[data-decision="GO"] strong,
+.flip-row[data-decision="GO"] strong {
+  color: var(--green);
+}
+
+.ladder-rung[data-decision="NO-GO"] strong,
+.flip-row[data-decision="NO-GO"] strong {
   color: var(--coral);
 }
 
