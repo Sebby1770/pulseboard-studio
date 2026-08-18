@@ -99,6 +99,28 @@ const result = {
       delta: 4,
     },
   ],
+  evidenceLadder: [
+    {
+      evidence: "signals",
+      label: "Directional",
+      score: 82,
+      delta: 0,
+      decision: "CONDITIONAL",
+      verdict: "Green light",
+      current: true,
+    },
+  ],
+  flipPoints: [
+    {
+      input: "evidence",
+      from: "signals",
+      to: "users",
+      score: 90,
+      delta: 8,
+      decision: "GO",
+      currentDecision: "CONDITIONAL",
+    },
+  ],
   smallestExperiment: {
     build: "Build one dashboard view.",
     test: "Test it with three users.",
@@ -160,6 +182,8 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   delete oldResult.goNoGo;
   delete oldResult.killCriteria;
   delete oldResult.sensitivityTable;
+  delete oldResult.evidenceLadder;
+  delete oldResult.flipPoints;
 
   const restored = migrateHistory(
     JSON.stringify([
@@ -186,6 +210,8 @@ test("v0.3 snapshots receive evidence defaults when restored", () => {
   assert.equal(restored[0].result.goNoGo, null);
   assert.deepEqual(restored[0].result.killCriteria, []);
   assert.deepEqual(restored[0].result.sensitivityTable, []);
+  assert.deepEqual(restored[0].result.evidenceLadder, []);
+  assert.deepEqual(restored[0].result.flipPoints, []);
 });
 
 test("scenario comparison treats lower risk as an improvement", () => {
@@ -334,6 +360,10 @@ test("decision memo includes the lever and execution timeline", () => {
   assert.match(memo, /## Kill Criteria/);
   assert.match(memo, /## Sensitivity Table/);
   assert.match(memo, /focused -> tiny/);
+  assert.match(memo, /## Evidence Ladder/);
+  assert.match(memo, /signals \(current\)/);
+  assert.match(memo, /## Flip Points/);
+  assert.match(memo, /flips CONDITIONAL to GO/);
 });
 
 test("decision memo carries scenario comparison context", () => {

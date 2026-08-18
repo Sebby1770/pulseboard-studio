@@ -52,7 +52,7 @@ EVIDENCE_MARGINS = {
     "users": 3,
 }
 
-MODEL_VERSION = "8.0"
+MODEL_VERSION = "9.0"
 
 GO_THRESHOLD = 72
 NO_GO_THRESHOLD = 42
@@ -100,6 +100,8 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
         "goNoGo": _go_no_go(brief, score, metrics),
         "killCriteria": _kill_criteria(brief, metrics),
         "sensitivityTable": _sensitivity_table(brief, score),
+        "evidenceLadder": _evidence_ladder(brief, score),
+        "flipPoints": _flip_points(brief, score, metrics),
     }
 
 
@@ -915,3 +917,142 @@ def _sensitivity_table(brief: ProjectBrief, current_score: int) -> list[dict[str
         )
     rows.sort(key=lambda row: (-abs(row["delta"]), row["input"], row["direction"]))
     return rows
+
+
+def _decision_snapshot(brief: ProjectBrief) -> tuple[int, str]:
+    score, metrics, _ = _score_brief(brief)
+    return score, _go_no_go(brief, score, metrics)["decision"]
+
+
+def _evidence_ladder(brief: ProjectBrief, current_score: int) -> list[dict[str, Any]]:
+    """Show the score and decision at each evidence level."""
+
+    rungs: list[dict[str, Any]] = []
+    for evidence in EVIDENCE_ORDER:
+        projected = replace(brief, evidence=evidence)
+        score, decision = _decision_snapshot(projected)
+        rungs.append(
+            {
+                "evidence": evidence,
+                "label": _evidence_grade(evidence)["label"],
+                "score": score,
+                "delta": score - current_score,
+                "decision": decision,
+                "verdict": _verdict(score),
+                "current": evidence == brief.evidence,
+            }
+        )
+    return rungs
+
+
+def _flip_points(
+    brief: ProjectBrief, current_score: int, metrics: dict[str, int]
+) -> list[dict[str, Any]]:
+    """Find the smallest change to each input that flips the go/no-go call."""
+
+    current_decision = _go_no_go(brief, current_score, metrics)["decision"]
+    points: list[dict[str, Any]] = []
+
+    hours_flip = _nearest_numeric_flip(
+        brief,
+        current_decision,
+        field="hours_per_week",
+        input_name="hoursPerWeek",
+        values=range(1, 61),
+        current_value=brief.hours_per_week,
+    )
+    if hours_flip:
+        points.append(hours_flip)
+
+    deadline_flip = _nearest_numeric_flip(
+        brief,
+        current_decision,
+        field="deadline_days",
+        input_name="deadlineDays",
+        values=range(1, 181),
+        current_value=brief.deadline_days,
+    )
+    if deadline_flip:
+        points.append(deadline_flip)
+
+    for field, input_name, options, current_value in (
+        ("scope", "scope", SCOPE_ORDER, brief.scope),
+        ("evidence", "evidence", EVIDENCE_ORDER, brief.evidence),
+        ("confidence", "confidence", (1, 2, 3, 4, 5), brief.confidence),
+    ):
+        flip = _nearest_option_flip(
+            brief,
+            current_decision,
+            field=field,
+            input_name=input_name,
+            options=options,
+            current_value=current_value,
+        )
+        if flip:
+            points.append(flip)
+
+    points.sort(key=lambda row: (abs(row["delta"]), row["input"]))
+    return points
+
+
+def _nearest_numeric_flip(
+    brief: ProjectBrief,
+    current_decision: str,
+    *,
+    field: str,
+    input_name: str,
+    values: range,
+    current_value: int,
+) -> dict[str, Any] | None:
+    best: dict[str, Any] | None = None
+    best_distance = None
+    for value in values:
+        if value == current_value:
+            continue
+        score, decision = _decision_snapshot(replace(brief, **{field: value}))
+        if decision == current_decision:
+            continue
+        distance = abs(value - current_value)
+        if best_distance is None or distance < best_distance:
+            best_distance = distance
+            best = {
+                "input": input_name,
+                "from": str(current_value),
+                "to": str(value),
+                "score": score,
+                "delta": score - _score_brief(brief)[0],
+                "decision": decision,
+                "currentDecision": current_decision,
+            }
+    return best
+
+
+def _nearest_option_flip(
+    brief: ProjectBrief,
+    current_decision: str,
+    *,
+    field: str,
+    input_name: str,
+    options: tuple[Any, ...],
+    current_value: Any,
+) -> dict[str, Any] | None:
+    current_score = _score_brief(brief)[0]
+    best: dict[str, Any] | None = None
+    for option in options:
+        if option == current_value:
+            continue
+        score, decision = _decision_snapshot(replace(brief, **{field: option}))
+        if decision == current_decision:
+            continue
+        candidate = {
+            "input": input_name,
+            "from": str(current_value),
+            "to": str(option),
+            "score": score,
+            "delta": score - current_score,
+            "decision": decision,
+            "currentDecision": current_decision,
+        }
+        if best is None or abs(candidate["delta"]) < abs(best["delta"]):
+            best = candidate
+    return best

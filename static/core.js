@@ -206,6 +206,8 @@ export function buildMemo(payload, result, comparison = null) {
   const goNoGoBlock = buildGoNoGoBlock(result.goNoGo);
   const killCriteriaBlock = buildKillCriteriaBlock(result.killCriteria);
   const sensitivityBlock = buildSensitivityBlock(result.sensitivityTable);
+  const ladderBlock = buildEvidenceLadderBlock(result.evidenceLadder);
+  const flipBlock = buildFlipPointsBlock(result.flipPoints);
   const comparisonBlock = buildComparisonBlock(comparison);
   return `# PulseBoard Decision Memo
 
@@ -233,7 +235,7 @@ ${lever.action}
 ${lever.rationale}
 
 ${impactBlock}
-${scenarioBlock}${sensitivityBlock}
+${scenarioBlock}${sensitivityBlock}${ladderBlock}${flipBlock}
 ## Scorecard
 
 ${metricRows}
@@ -314,6 +316,33 @@ function buildSensitivityBlock(rows = []) {
     .map((row) => `- **${row.input} ${row.direction}:** ${row.from} -> ${row.to} (${formatDelta(row.delta)} to ${row.score})`)
     .join("\n");
   return `## Sensitivity Table
+
+${lines}
+
+`;
+}
+
+function buildEvidenceLadderBlock(rungs = []) {
+  if (!Array.isArray(rungs) || !rungs.length) return "";
+  const lines = rungs
+    .map((rung) => {
+      const marker = rung.current ? " (current)" : "";
+      return `- **${rung.evidence}${marker}:** ${rung.score}/100, ${rung.decision}`;
+    })
+    .join("\n");
+  return `## Evidence Ladder
+
+${lines}
+
+`;
+}
+
+function buildFlipPointsBlock(points = []) {
+  if (!Array.isArray(points) || !points.length) return "";
+  const lines = points
+    .map((point) => `- **${point.input}:** ${point.from} -> ${point.to} flips ${point.currentDecision} to ${point.decision} (${formatDelta(point.delta)} to ${point.score})`)
+    .join("\n");
+  return `## Flip Points
 
 ${lines}
 
@@ -430,6 +459,8 @@ function withResultDefaults(result) {
     goNoGo: result.goNoGo || null,
     killCriteria: Array.isArray(result.killCriteria) ? result.killCriteria : [],
     sensitivityTable: Array.isArray(result.sensitivityTable) ? result.sensitivityTable : [],
+    evidenceLadder: Array.isArray(result.evidenceLadder) ? result.evidenceLadder : [],
+    flipPoints: Array.isArray(result.flipPoints) ? result.flipPoints : [],
   };
 }
 

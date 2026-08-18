@@ -126,7 +126,7 @@
         </form>
 
         <section class="panel result-panel" aria-live="polite">
-          <div class="panel-bar"><strong>Result</strong><span id="modelVersion">Engine 8.0</span></div>
+          <div class="panel-bar"><strong>Result</strong><span id="modelVersion">Engine 9.0</span></div>
           <div class="panel-content result-content">
             <div class="score-header">
               <div>
@@ -207,6 +207,26 @@
               <div class="sensitivity-list" id="sensitivityList"></div>
             </section>
 
+            <section class="ladder-section" id="ladderSection" hidden>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Evidence ladder</p>
+                  <h3>See what stronger proof does to the call.</h3>
+                </div>
+              </div>
+              <div class="ladder-list" id="ladderList"></div>
+            </section>
+
+            <section class="flip-section" id="flipSection" hidden>
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Flip points</p>
+                  <h3>The smallest change that flips go / no-go.</h3>
+                </div>
+              </div>
+              <div class="flip-list" id="flipList"></div>
+            </section>
+
             <section class="week-plan-section" id="weekPlanSection" hidden>
               <div class="section-heading">
                 <div>
@@ -276,7 +296,7 @@
       </section>
 
       <footer class="app-footer">
-        <span>PulseBoard Studio v1.0.0</span>
+        <span>PulseBoard Studio v1.1.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>

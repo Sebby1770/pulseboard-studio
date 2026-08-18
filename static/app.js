@@ -35,6 +35,10 @@ const killCriteria = document.querySelector("#killCriteria");
 const goNoGo = document.querySelector("#goNoGo");
 const sensitivitySection = document.querySelector("#sensitivitySection");
 const sensitivityList = document.querySelector("#sensitivityList");
+const ladderSection = document.querySelector("#ladderSection");
+const ladderList = document.querySelector("#ladderList");
+const flipSection = document.querySelector("#flipSection");
+const flipList = document.querySelector("#flipList");
 const timeline = document.querySelector("#timeline");
 const questions = document.querySelector("#questions");
 const experimentSection = document.querySelector("#experimentSection");
@@ -195,6 +199,8 @@ function renderResult(result) {
   renderImpactMoves(result.highestImpactMoves || []);
   renderScenarioVariants(result.scenarioVariants || []);
   renderSensitivity(result.sensitivityTable || []);
+  renderEvidenceLadder(result.evidenceLadder || []);
+  renderFlipPoints(result.flipPoints || []);
   renderWeekPlan(result.thisWeekPlan);
   nextSteps.replaceChildren(...result.nextSteps.map((step) => listItem(step)));
   risks.replaceChildren(...result.risks.map((risk) => listItem(risk)));
@@ -283,6 +289,58 @@ function renderSensitivity(rows) {
     }),
   );
   sensitivitySection.hidden = false;
+}
+
+function renderEvidenceLadder(rungs) {
+  if (!rungs.length) {
+    ladderSection.hidden = true;
+    ladderList.replaceChildren();
+    return;
+  }
+
+  ladderList.replaceChildren(
+    ...rungs.map((rung) => {
+      const item = document.createElement("article");
+      const label = document.createElement("span");
+      const score = document.createElement("strong");
+      const decision = document.createElement("em");
+      item.className = "ladder-rung";
+      if (rung.current) item.dataset.current = "true";
+      item.dataset.decision = rung.decision;
+      label.textContent = rung.label;
+      score.textContent = `${rung.score}/100`;
+      decision.textContent = rung.decision;
+      item.append(label, score, decision);
+      return item;
+    }),
+  );
+  ladderSection.hidden = false;
+}
+
+function renderFlipPoints(points) {
+  if (!points.length) {
+    flipSection.hidden = true;
+    flipList.replaceChildren();
+    return;
+  }
+
+  flipList.replaceChildren(
+    ...points.map((point) => {
+      const item = document.createElement("article");
+      const label = document.createElement("span");
+      const score = document.createElement("strong");
+      const detail = document.createElement("p");
+      const sign = point.delta > 0 ? "+" : "";
+      item.className = "flip-row";
+      item.dataset.decision = point.decision;
+      label.textContent = point.input;
+      score.textContent = point.decision;
+      detail.textContent = `${point.from} -> ${point.to} (${sign}${point.delta} to ${point.score}/100)`;
+      item.append(label, score, detail);
+      return item;
+    }),
+  );
+  flipSection.hidden = false;
 }
 
 function renderWeekPlan(plan) {
@@ -548,6 +606,10 @@ clearButton.addEventListener("click", () => {
   delete goNoGo.dataset.decision;
   sensitivityList.replaceChildren();
   sensitivitySection.hidden = true;
+  ladderList.replaceChildren();
+  ladderSection.hidden = true;
+  flipList.replaceChildren();
+  flipSection.hidden = true;
   verdict.textContent = "Ready when you are";
   summary.textContent =
     "Add a project idea and PulseBoard will score clarity, feasibility, momentum, evidence, and risk.";
