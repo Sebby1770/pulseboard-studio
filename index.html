@@ -178,8 +178,10 @@
                 </div>
                 <button type="button" id="baselineButton" disabled>Set baseline</button>
                 <div class="memo-actions">
+                  <button type="button" id="undoButton" disabled>Undo</button>
                   <button type="button" id="copyMemoButton" disabled>Copy memo</button>
                   <button type="button" id="downloadMemoButton" disabled>Download .md</button>
+                  <button type="button" id="downloadJsonButton" disabled>Download .json</button>
                   <button type="button" id="shareLinkButton" disabled>Share link</button>
                 </div>
               </div>
@@ -189,6 +191,10 @@
               Add a project idea and PulseBoard will score clarity, feasibility, momentum,
               evidence, and risk.
             </p>
+            <div class="empty-cta" id="emptyCta">
+              <p>No score yet. Analyze the brief, or load a sample and see a go / no-go in one click.</p>
+              <button type="button" id="emptySampleButton">Try the SaaS sample</button>
+            </div>
             <p class="evidence-note" id="evidenceNote" hidden></p>
             <div class="signal-row" id="signalRow" aria-label="Detected project signals"></div>
             <div class="meter-grid" id="metricGrid"></div>
@@ -255,6 +261,15 @@
                 id="panel-plan"
                 aria-labelledby="tab-plan"
               >
+                <section class="score-mix" id="scoreMix" hidden>
+                  <div>
+                    <p class="eyebrow">Score mix</p>
+                    <h3>Where the number comes from.</h3>
+                  </div>
+                  <p id="scoreMixCopy"></p>
+                  <div class="score-mix-bars" id="scoreMixBars"></div>
+                </section>
+
                 <section class="lever-section" id="leverSection" hidden>
                   <div>
                     <p class="eyebrow">Best lever</p>
@@ -405,15 +420,17 @@
             <h2>Recent scores</h2>
             <button type="button" id="clearHistoryButton">Reset</button>
           </div>
+          <canvas id="historySpark" class="history-spark" width="320" height="48" hidden></canvas>
           <div id="historyList" class="history-list"></div>
         </aside>
       </section>
 
       <footer class="app-footer">
-        <span>PulseBoard Studio v1.2.0</span>
+        <span>PulseBoard Studio v1.3.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="static/app.js"></script>
   </body>
 </html>

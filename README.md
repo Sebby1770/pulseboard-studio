@@ -8,7 +8,7 @@ Live site: [https://Sebby1770.github.io/pulseboard-studio/](https://Sebby1770.gi
 
 It is inspectable on purpose. Scoring is a heuristic (word counts, allow-listed enums, a 14-word signal set). There is no API key and no model call.
 
-Version 1.2 adds an on-device JavaScript port of engine 9.0 so the app runs on GitHub Pages, plus a decision-first result surface with tabs and click-to-apply. Python remains the oracle. See [CHANGELOG.md](CHANGELOG.md) for release history.
+Version 1.3 adds undo for applied moves, a score-mix breakdown, JSON export, and a one-click empty-state sample. Engine 9.0 is unchanged. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Dual engine
 
@@ -72,7 +72,7 @@ The response includes a score, likely range, evidence grade, verdict, go/no-go d
 
 ## Using the console
 
-After an analysis, **Plan / Moves / Sensitivity / Evidence** keep the full engine output reachable without one long scroll. Click an impact move, scenario, sensitivity row, flip point, or ladder rung to apply that patched brief and re-score.
+After an analysis, **Plan / Moves / Sensitivity / Evidence** keep the full engine output reachable without one long scroll. Click an impact move, scenario, sensitivity row, flip point, or ladder rung to apply that patched brief and re-score. **Undo** (or `Ctrl`/`Cmd`+`Z`) walks the last apply back. `1`–`4` switch tabs.
 
 Use **Share link** to copy a URL containing the project brief. Scenario data lives after the URL `#`, so it is restored in the browser without being included in the initial HTTP request. Shared briefs auto-analyze against the live engine.
 

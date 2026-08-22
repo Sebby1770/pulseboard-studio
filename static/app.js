@@ -75,13 +75,22 @@ const confidence = document.querySelector("#confidence");
 const confidenceValue = document.querySelector("#confidenceValue");
 const copyMemoButton = document.querySelector("#copyMemoButton");
 const downloadMemoButton = document.querySelector("#downloadMemoButton");
+const downloadJsonButton = document.querySelector("#downloadJsonButton");
 const shareLinkButton = document.querySelector("#shareLinkButton");
+const undoButton = document.querySelector("#undoButton");
 const baselineButton = document.querySelector("#baselineButton");
 const draftStatus = document.querySelector("#draftStatus");
 const formError = document.querySelector("#formError");
 const themeToggle = document.querySelector("#themeToggle");
 const resultTabs = document.querySelector("#resultTabs");
 const tabList = document.querySelector("#tabList");
+const emptyCta = document.querySelector("#emptyCta");
+const emptySampleButton = document.querySelector("#emptySampleButton");
+const scoreMix = document.querySelector("#scoreMix");
+const scoreMixCopy = document.querySelector("#scoreMixCopy");
+const scoreMixBars = document.querySelector("#scoreMixBars");
+const historySpark = document.querySelector("#historySpark");
+const toast = document.querySelector("#toast");
 const primaryAction = form.querySelector(".primary-action");
 
 const HISTORY_KEY = "pulseboard.history.v2";
@@ -89,8 +98,16 @@ const LEGACY_HISTORY_KEY = "pulseboard.history.v1";
 const DRAFT_KEY = "pulseboard.draft.v1";
 const BASELINE_KEY = "pulseboard.baseline.v1";
 const THEME_KEY = "pulseboard.theme.v1";
+const TAB_KEY = "pulseboard.tab.v1";
 const TABS = ["plan", "moves", "sensitivity", "evidence"];
 const EVIDENCE_ORDER = ["idea", "signals", "users"];
+const SCORE_WEIGHTS = {
+  clarity: 0.22,
+  feasibility: 0.28,
+  momentum: 0.2,
+  evidence: 0.14,
+  risk: 0.16,
+};
 
 const SAMPLE_BRIEFS = {
   saas: {
@@ -137,9 +154,11 @@ const SAMPLE_BRIEFS = {
 
 let lastAnalysis = null;
 let draftTimer = null;
+let toastTimer = null;
 let engineMode = "on-device";
 let usedOnDevice = false;
 let scoring = false;
+const undoStack = [];
 
 function apiUrl(path = "api/score") {
   return new URL(path, document.baseURI).toString();
@@ -235,6 +254,7 @@ async function checkApi() {
 function renderResult(result) {
   resultPanel.dataset.ready = "true";
   resultTabs.hidden = false;
+  if (emptyCta) emptyCta.hidden = true;
   modelVersion.textContent = `Engine ${result.modelVersion || MODEL_VERSION}`;
   verdict.textContent = result.verdict;
   if (result.goNoGo) {
@@ -292,6 +312,7 @@ function renderResult(result) {
   leverRationale.textContent = lever.rationale;
   leverSection.hidden = false;
 
+  renderScoreMix(result);
   renderImpactMoves(result.highestImpactMoves || []);
   renderScenarioVariants(result.scenarioVariants || []);
   renderSensitivity(result.sensitivityTable || []);
@@ -334,8 +355,84 @@ function renderResult(result) {
   secondaryResults.hidden = false;
   copyMemoButton.disabled = false;
   downloadMemoButton.disabled = false;
+  downloadJsonButton.disabled = false;
   shareLinkButton.disabled = false;
+  updateUndoButton();
   updateBaselineButton(result);
+}
+
+function renderScoreMix(result) {
+  if (!result?.metrics || !scoreMix) {
+    return;
+  }
+  const parts = Object.entries(SCORE_WEIGHTS).map(([name, weight]) => {
+    const raw = Number(result.metrics[name]) || 0;
+    const value = name === "risk" ? 100 - raw : raw;
+    return {
+      name,
+      weight,
+      value,
+      contribution: value * weight,
+    };
+  });
+  const total = parts.reduce((sum, part) => sum + part.contribution, 0);
+  const top = parts.slice().sort((a, b) => b.contribution - a.contribution)[0];
+  scoreMixCopy.textContent =
+    `Weighted mix is ${Math.round(total)}. Strongest term: ${titleCase(top.name)} ` +
+    `(${Math.round(top.weight * 100)}% × ${Math.round(top.value)}).`;
+  scoreMixBars.replaceChildren(
+    ...parts.map((part) => {
+      const row = document.createElement("div");
+      const label = document.createElement("span");
+      const bar = document.createElement("i");
+      const number = document.createElement("strong");
+      label.textContent = `${titleCase(part.name)} ${Math.round(part.weight * 100)}%`;
+      bar.style.width = `${Math.max(4, part.value)}%`;
+      number.textContent = `${part.contribution.toFixed(1)}`;
+      row.append(label, bar, number);
+      return row;
+    }),
+  );
+  scoreMix.hidden = false;
+}
+
+function showToast(message) {
+  if (!toast) return;
+  toast.textContent = message;
+  toast.hidden = false;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    toast.hidden = true;
+  }, 2200);
+}
+
+function updateUndoButton() {
+  undoButton.disabled = undoStack.length === 0;
+}
+
+function renderHistorySpark(history) {
+  if (!historySpark) return;
+  if (history.length < 2) {
+    historySpark.hidden = true;
+    return;
+  }
+  historySpark.hidden = false;
+  const scores = history.map((entry) => entry.score).reverse();
+  const width = historySpark.width;
+  const height = historySpark.height;
+  const context = historySpark.getContext("2d");
+  const style = getComputedStyle(document.documentElement);
+  context.clearRect(0, 0, width, height);
+  context.strokeStyle = style.getPropertyValue("--teal").trim() || "#009f93";
+  context.lineWidth = 2;
+  context.beginPath();
+  scores.forEach((score, index) => {
+    const x = (index / (scores.length - 1)) * (width - 8) + 4;
+    const y = height - 6 - (score / 100) * (height - 12);
+    if (index === 0) context.moveTo(x, y);
+    else context.lineTo(x, y);
+  });
+  context.stroke();
 }
 
 function renderScenarioVariants(variants) {
@@ -640,10 +737,11 @@ function resultsMatch(previous, current) {
 
 function renderHistory() {
   const history = loadHistory();
+  renderHistorySpark(history);
   if (!history.length) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
-    empty.textContent = "No scores yet.";
+    empty.textContent = "No scores yet. Analyze a brief to build a trail.";
     historyList.replaceChildren(empty);
     return;
   }
@@ -790,14 +888,43 @@ async function runAnalysis(payload) {
 }
 
 async function applyAndAnalyze(payload, statusMessage) {
+  if (lastAnalysis?.payload) {
+    undoStack.push({
+      payload: lastAnalysis.payload,
+      result: lastAnalysis.result,
+      comparison: lastAnalysis.comparison,
+    });
+    updateUndoButton();
+  }
   const normalized = normalizePayload(payload);
   applyPayload(normalized);
   saveDraft(normalized);
   const result = await runAnalysis(normalized);
-  if (result && statusMessage) setStatus(statusMessage, "ok");
+  if (result && statusMessage) {
+    setStatus(statusMessage, "ok");
+    showToast(statusMessage);
+  }
+}
+
+function restoreUndo() {
+  const previous = undoStack.pop();
+  updateUndoButton();
+  if (!previous) return;
+  applyPayload(previous.payload);
+  renderResult(previous.result);
+  const fallback = loadHistory().find(
+    (entry) => entry.result && entry.payload?.idea !== previous.payload.idea,
+  )?.result;
+  const target = comparisonTarget(fallback);
+  const comparison = renderComparison(target.result, previous.result, target.context);
+  lastAnalysis = { payload: previous.payload, result: previous.result, comparison };
+  saveDraft(previous.payload, "Undid last apply");
+  setStatus("Undid last apply", "ok");
+  showToast("Undid last apply");
 }
 
 function selectTab(id) {
+  if (!TABS.includes(id)) return;
   for (const tab of TABS) {
     const button = document.querySelector(`#tab-${tab}`);
     const panel = document.querySelector(`#panel-${tab}`);
@@ -806,6 +933,7 @@ function selectTab(id) {
     button.tabIndex = selected ? 0 : -1;
     panel.hidden = !selected;
   }
+  localStorage.setItem(TAB_KEY, id);
 }
 
 function currentTheme() {
@@ -902,9 +1030,15 @@ clearButton.addEventListener("click", () => {
   primaryResults.hidden = true;
   secondaryResults.hidden = true;
   resultTabs.hidden = true;
+  if (emptyCta) emptyCta.hidden = false;
+  if (scoreMix) scoreMix.hidden = true;
+  scoreMixBars?.replaceChildren();
+  undoStack.length = 0;
+  updateUndoButton();
   selectTab("plan");
   copyMemoButton.disabled = true;
   downloadMemoButton.disabled = true;
+  downloadJsonButton.disabled = true;
   shareLinkButton.disabled = true;
   delete resultPanel.dataset.ready;
   confidenceValue.textContent = confidence.value;
@@ -940,6 +1074,7 @@ copyMemoButton.addEventListener("click", async () => {
       buildMemo(lastAnalysis.payload, lastAnalysis.result, lastAnalysis.comparison),
     );
     setStatus("Memo copied", "ok");
+    showToast("Memo copied");
   } catch {
     setStatus("Copy unavailable", "error");
   }
@@ -960,6 +1095,38 @@ downloadMemoButton.addEventListener("click", () => {
   link.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
   setStatus("Memo downloaded", "ok");
+  showToast("Memo downloaded");
+});
+
+downloadJsonButton.addEventListener("click", () => {
+  if (!lastAnalysis) return;
+  const blob = new Blob(
+    [
+      JSON.stringify(
+        {
+          payload: lastAnalysis.payload,
+          result: lastAnalysis.result,
+          comparison: lastAnalysis.comparison,
+        },
+        null,
+        2,
+      ),
+    ],
+    { type: "application/json;charset=utf-8" },
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "pulseboard-decision.json";
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  setStatus("JSON downloaded", "ok");
+  showToast("JSON downloaded");
+});
+
+undoButton.addEventListener("click", restoreUndo);
+emptySampleButton?.addEventListener("click", () => {
+  applyAndAnalyze(SAMPLE_BRIEFS.saas, "SaaS sample scored");
 });
 
 shareLinkButton.addEventListener("click", async () => {
@@ -968,6 +1135,7 @@ shareLinkButton.addEventListener("click", async () => {
     const url = buildShareUrl(lastAnalysis.payload, window.location.href);
     await navigator.clipboard.writeText(url);
     setStatus("Share link copied", "ok");
+    showToast("Share link copied");
   } catch {
     setStatus("Share unavailable", "error");
   }
@@ -1046,8 +1214,26 @@ function setFormError(message) {
   formError.hidden = !message;
 }
 
+window.addEventListener("keydown", (event) => {
+  if (isTypingField(event.target)) return;
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z" && !event.shiftKey) {
+    event.preventDefault();
+    restoreUndo();
+    return;
+  }
+  if (["1", "2", "3", "4"].includes(event.key) && resultPanel.dataset.ready === "true") {
+    selectTab(TABS[Number(event.key) - 1]);
+  }
+});
+
+function isTypingField(target) {
+  const tag = target?.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable;
+}
+
 initTheme();
-selectTab("plan");
+const storedTab = localStorage.getItem(TAB_KEY);
+selectTab(TABS.includes(storedTab) ? storedTab : "plan");
 const sharedBrief = restoreSharedScenario();
 if (!sharedBrief) restoreDraft();
 renderHistory();

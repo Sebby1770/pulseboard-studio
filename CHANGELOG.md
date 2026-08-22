@@ -4,6 +4,22 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [1.3.0] - 2026-08-22
+
+### Added
+
+- Undo for click-to-apply moves (`Undo` and `Ctrl`/`Cmd`+`Z`).
+- JSON export of the current payload, result, and comparison.
+- Empty-state call to action that scores the SaaS sample in one click.
+- Score-mix breakdown showing weighted contributions on the Plan tab.
+- History sparkline for the last six scores.
+- Toasts for copy, share, download, and undo.
+- Keyboard shortcuts `1`–`4` to switch result tabs; the last tab is remembered.
+
+### Changed
+
+- Application version `1.3.0`; scoring model remains `9.0`.
+
 ## [1.2.0] - 2026-08-22
 
 ### Added
