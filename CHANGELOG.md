@@ -4,6 +4,38 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [1.2.0] - 2026-08-22
+
+### Added
+
+- An on-device JavaScript port of scoring engine 9.0, verified against golden Python fixtures.
+- Dual scoring: Python `api/score` when available, `static/engine.js` on GitHub Pages or API failure.
+- Decision-first result tabs: Plan, Moves, Sensitivity, and Evidence.
+- Click-to-apply on impact moves, scenario cards, sensitivity rows, flip points, and evidence-ladder rungs.
+- Sample brief chips (SaaS dashboard, API automation, learning prototype, ambitious platform).
+- Auto-analyze for sample briefs and shared links; `Ctrl`/`Cmd`+`Enter` submits the form.
+- Skip link, favicon, Open Graph tags, `theme-color`, and a persisted light/dark theme.
+- GitHub Pages workflow that publishes only `index.html`, `favicon.svg`, and `static/`.
+
+### Changed
+
+- Application version `1.2.0`; scoring model remains `9.0`.
+- Asset and API URLs are relative so local `:8787` and project Pages share one tree.
+- Hours default to 8 when omitted, matching the form.
+- History restore re-scores snapshots whose `modelVersion` is not the live engine.
+- The status chip treats on-device mode as healthy (`Engine 9.0 · on-device`).
+- Result layout is a workspace of brief, decision panel, and compact history instead of a full-width history strip.
+
+### Fixed
+
+- Impact-move copy no longer concatenates `action` with `metric lift`.
+- Disabled controls use `not-allowed` instead of `wait`, except while scoring.
+
+### Security
+
+- Local server serves only `index.html`, `favicon.svg`, and files under `static/`.
+- CORS `*` was removed from the local server; the API is same-origin.
+
 ## [1.1.0] - 2026-08-19
 
 ### Added
@@ -238,6 +270,7 @@ The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
 - Vercel Python serverless function and static deployment configuration.
 - Unit tests and GitHub Actions CI.
 
+[1.2.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v1.0.0
 [0.9.0]: https://github.com/Sebby1770/pulseboard-studio/releases/tag/v0.9.0

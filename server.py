@@ -13,6 +13,7 @@ from pulseboard import MODEL_VERSION, ProjectInputError, analyse_project
 
 ROOT = Path(__file__).resolve().parent
 MAX_BODY_BYTES = 16_384
+PUBLIC_ROOT_FILES = {"index.html", "favicon.svg"}
 
 
 class PulseBoardHandler(BaseHTTPRequestHandler):
@@ -60,7 +61,7 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
         target = (ROOT / rel_path).resolve()
         if target.is_dir():
             target = (target / "index.html").resolve()
-        if not target.is_relative_to(ROOT) or not target.exists():
+        if not self._is_public_file(target):
             self._send_json({"error": "Not found."}, status=404)
             return
 
@@ -83,6 +84,19 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _is_public_file(self, target: Path) -> bool:
+        if not target.is_file():
+            return False
+        try:
+            relative = target.relative_to(ROOT)
+        except ValueError:
+            return False
+        if any(part.startswith(".") for part in relative.parts):
+            return False
+        if relative.as_posix() in PUBLIC_ROOT_FILES:
+            return True
+        return relative.parts[0] == "static"
+
     def _read_json(self) -> dict[str, Any]:
         try:
             length = int(self.headers.get("content-length", "0") or "0")
@@ -101,7 +115,6 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
 
     def _send_empty(self, status: int) -> None:
         self.send_response(status)
-        self._cors_headers()
         self.end_headers()
 
     def _send_json(self, payload: dict[str, Any], status: int = 200) -> None:
@@ -111,14 +124,8 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
         self.send_header("content-length", str(len(body)))
         self.send_header("x-content-type-options", "nosniff")
         self.send_header("cache-control", "no-store")
-        self._cors_headers()
         self.end_headers()
         self.wfile.write(body)
-
-    def _cors_headers(self) -> None:
-        self.send_header("access-control-allow-origin", "*")
-        self.send_header("access-control-allow-methods", "GET, POST, OPTIONS")
-        self.send_header("access-control-allow-headers", "content-type")
 
     def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
         path = urlparse(self.path).path

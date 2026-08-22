@@ -1,0 +1,1591 @@
+[
+  {
+    "payload": {
+      "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+      "goal": "Ship a prototype for one SaaS workflow.",
+      "deadlineDays": 21,
+      "hoursPerWeek": 8,
+      "confidence": 4,
+      "scope": "focused",
+      "riskAppetite": "medium",
+      "evidence": "signals"
+    },
+    "result": {
+      "modelVersion": "9.0",
+      "score": 75,
+      "scoreRange": {
+        "low": 68,
+        "high": 82,
+        "margin": 7
+      },
+      "verdict": "Promising, trim scope",
+      "summary": "This can work if the first version stays narrow. The first release target is \"Ship a prototype for one SaaS workflow\". Plan on about 8 hours per week over 21 days.",
+      "evidenceGrade": {
+        "label": "Directional",
+        "detail": "Some external interest exists, but user behavior is not yet proven."
+      },
+      "signals": [
+        "api",
+        "customer",
+        "dashboard",
+        "data",
+        "launch",
+        "prototype",
+        "ship",
+        "workflow"
+      ],
+      "metrics": {
+        "clarity": 89,
+        "feasibility": 72,
+        "momentum": 100,
+        "evidence": 60,
+        "risk": 58
+      },
+      "recommendedLever": {
+        "metric": "Risk",
+        "title": "Test the most fragile assumption",
+        "action": "Name the assumption most likely to invalidate the project and test it before expanding scope.",
+        "rationale": "Reducing one unknown is more valuable than polishing several known parts."
+      },
+      "highestImpactMoves": [
+        {
+          "id": "scope",
+          "title": "Reduce to one workflow",
+          "action": "Remove one complete feature family and keep a single input-to-outcome path for release one.",
+          "metric": "Feasibility",
+          "effort": "30 minutes",
+          "projectedScore": 83,
+          "delta": 8
+        },
+        {
+          "id": "evidence",
+          "title": "Observe real use",
+          "action": "Put one working path in front of three target users and capture what they actually complete.",
+          "metric": "Evidence",
+          "effort": "3-5 days",
+          "projectedScore": 81,
+          "delta": 6
+        },
+        {
+          "id": "confidence",
+          "title": "Resolve the biggest unknown",
+          "action": "Run one focused test that would move confidence up by a single level before committing the full build.",
+          "metric": "Momentum",
+          "effort": "1 day",
+          "projectedScore": 78,
+          "delta": 3
+        }
+      ],
+      "scenarioVariants": [
+        {
+          "id": "lean-launch",
+          "label": "Lean launch",
+          "score": 83,
+          "delta": 8,
+          "verdict": "Green light",
+          "rationale": "Shows the score if release one becomes a single tiny workflow.",
+          "changes": [
+            "Scope: focused -> tiny"
+          ],
+          "risk": 32
+        },
+        {
+          "id": "proof-sprint",
+          "label": "Proof sprint",
+          "score": 85,
+          "delta": 10,
+          "verdict": "Green light",
+          "rationale": "Shows the score if this week is used to earn stronger evidence before expanding.",
+          "changes": [
+            "Evidence: signals -> users",
+            "Confidence: 4 -> 5",
+            "Hours/week: 8 -> 10"
+          ],
+          "risk": 41
+        },
+        {
+          "id": "scope-drift",
+          "label": "Scope drift",
+          "score": 60,
+          "delta": -15,
+          "verdict": "Promising, trim scope",
+          "rationale": "Shows the penalty if the build grows while the decision window tightens.",
+          "changes": [
+            "Scope: focused -> ambitious",
+            "Confidence: 4 -> 3",
+            "Deadline: 21 -> 14 days"
+          ],
+          "risk": 100
+        }
+      ],
+      "thisWeekPlan": {
+        "focus": "Ship one visible learning loop",
+        "availableHours": 8,
+        "checkpoint": "End the week with a tested happy path and one clear next decision.",
+        "blocks": [
+          {
+            "label": "Frame",
+            "hours": 1,
+            "action": "Write the user promise, success signal, and non-goals."
+          },
+          {
+            "label": "Build",
+            "hours": 4,
+            "action": "Wire one input-to-output automation path with a manual fallback."
+          },
+          {
+            "label": "Test",
+            "hours": 2,
+            "action": "Run ten cases, including two failures, and record recovery steps."
+          },
+          {
+            "label": "Decide",
+            "hours": 1,
+            "action": "Re-score, compare against the baseline, and choose one next move."
+          }
+        ]
+      },
+      "stopConditions": [
+        "Re-score before adding any feature that does not strengthen the release goal.",
+        "Pause if two consecutive tests miss the smallest experiment's success signal.",
+        "Reshape the project if the core workflow still needs explanation after three user sessions."
+      ],
+      "nextSteps": [
+        "Write a one-sentence user promise and pin it above the build list.",
+        "Choose one workflow that proves the idea without needing every feature.",
+        "Reserve the first 4 hours for a clickable happy path.",
+        "Define three metrics that would make the dashboard worth opening twice.",
+        "Document the API boundary before wiring background automation."
+      ],
+      "risks": [
+        "Main risk is unknown demand; test the promise with one real user or scenario."
+      ],
+      "timeline": [
+        {
+          "label": "Day 1",
+          "action": "Define the user, success signal, and what the first version will not do."
+        },
+        {
+          "label": "First build block",
+          "action": "Spend 6 hours on the smallest working flow."
+        },
+        {
+          "label": "Midpoint",
+          "action": "Test with real input, remove confusing steps, and update the score."
+        },
+        {
+          "label": "Ship window",
+          "action": "Publish a demo, capture feedback, and choose the next single improvement."
+        }
+      ],
+      "smallestExperiment": {
+        "build": "Use one realistic dataset and one decision-focused dashboard view.",
+        "test": "Give it to three target users without explaining the interface.",
+        "success": "At least two users identify the right next action within 60 seconds."
+      },
+      "questions": [
+        "Who is the first specific user, and what are they doing immediately before this?",
+        "Which data source or integration is most likely to fail first?",
+        "What evidence would make you stop, narrow, or change direction?"
+      ],
+      "goNoGo": {
+        "decision": "GO",
+        "reason": "Clarity, capacity, and evidence are strong enough to ship a narrow first version this cycle.",
+        "thresholds": {
+          "go": 72,
+          "noGo": 42
+        }
+      },
+      "killCriteria": [
+        "Kill this shape if the smallest experiment fails twice with the same user type.",
+        "Kill this shape if no target user will spend 15 minutes on a prototype in the next two weeks."
+      ],
+      "sensitivityTable": [
+        {
+          "input": "scope",
+          "direction": "wider",
+          "from": "focused",
+          "to": "ambitious",
+          "score": 66,
+          "delta": -9
+        },
+        {
+          "input": "evidence",
+          "direction": "weaker",
+          "from": "signals",
+          "to": "idea",
+          "score": 67,
+          "delta": -8
+        },
+        {
+          "input": "scope",
+          "direction": "narrower",
+          "from": "focused",
+          "to": "tiny",
+          "score": 83,
+          "delta": 8
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "less-time",
+          "from": "21",
+          "to": "7",
+          "score": 68,
+          "delta": -7
+        },
+        {
+          "input": "evidence",
+          "direction": "stronger",
+          "from": "signals",
+          "to": "users",
+          "score": 81,
+          "delta": 6
+        },
+        {
+          "input": "confidence",
+          "direction": "lower",
+          "from": "4",
+          "to": "3",
+          "score": 71,
+          "delta": -4
+        },
+        {
+          "input": "confidence",
+          "direction": "higher",
+          "from": "4",
+          "to": "5",
+          "score": 78,
+          "delta": 3
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "less-capacity",
+          "from": "8",
+          "to": "4",
+          "score": 72,
+          "delta": -3
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "more-time",
+          "from": "21",
+          "to": "35",
+          "score": 76,
+          "delta": 1
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "more-capacity",
+          "from": "8",
+          "to": "12",
+          "score": 76,
+          "delta": 1
+        }
+      ],
+      "evidenceLadder": [
+        {
+          "evidence": "idea",
+          "label": "Early estimate",
+          "score": 67,
+          "delta": -8,
+          "decision": "CONDITIONAL",
+          "verdict": "Promising, trim scope",
+          "current": false
+        },
+        {
+          "evidence": "signals",
+          "label": "Directional",
+          "score": 75,
+          "delta": 0,
+          "decision": "GO",
+          "verdict": "Promising, trim scope",
+          "current": true
+        },
+        {
+          "evidence": "users",
+          "label": "Evidence-backed",
+          "score": 81,
+          "delta": 6,
+          "decision": "GO",
+          "verdict": "Green light",
+          "current": false
+        }
+      ],
+      "flipPoints": [
+        {
+          "input": "deadlineDays",
+          "from": "21",
+          "to": "13",
+          "score": 73,
+          "delta": -2,
+          "decision": "CONDITIONAL",
+          "currentDecision": "GO"
+        },
+        {
+          "input": "confidence",
+          "from": "4",
+          "to": "3",
+          "score": 71,
+          "delta": -4,
+          "decision": "CONDITIONAL",
+          "currentDecision": "GO"
+        },
+        {
+          "input": "hoursPerWeek",
+          "from": "8",
+          "to": "3",
+          "score": 70,
+          "delta": -5,
+          "decision": "CONDITIONAL",
+          "currentDecision": "GO"
+        },
+        {
+          "input": "evidence",
+          "from": "signals",
+          "to": "idea",
+          "score": 67,
+          "delta": -8,
+          "decision": "CONDITIONAL",
+          "currentDecision": "GO"
+        },
+        {
+          "input": "scope",
+          "from": "focused",
+          "to": "ambitious",
+          "score": 66,
+          "delta": -9,
+          "decision": "CONDITIONAL",
+          "currentDecision": "GO"
+        }
+      ]
+    }
+  },
+  {
+    "payload": {
+      "idea": "Automate weekly support notes."
+    },
+    "result": {
+      "modelVersion": "9.0",
+      "score": 53,
+      "scoreRange": {
+        "low": 41,
+        "high": 65,
+        "margin": 12
+      },
+      "verdict": "Prototype carefully",
+      "summary": "This needs a learning prototype before a full build. The first release target is \"Ship a usable first version\". Plan on about 8 hours per week over 21 days.",
+      "evidenceGrade": {
+        "label": "Early estimate",
+        "detail": "This score is driven mostly by assumptions and planning inputs."
+      },
+      "signals": [
+        "automate",
+        "ship"
+      ],
+      "metrics": {
+        "clarity": 56,
+        "feasibility": 61,
+        "momentum": 81,
+        "evidence": 20,
+        "risk": 75
+      },
+      "recommendedLever": {
+        "metric": "Evidence",
+        "title": "Get one external signal",
+        "action": "Show the promise or prototype to one target user and record what they actually try to do.",
+        "rationale": "External behavior is more trustworthy than adding detail to the project description."
+      },
+      "highestImpactMoves": [
+        {
+          "id": "scope",
+          "title": "Reduce to one workflow",
+          "action": "Remove one complete feature family and keep a single input-to-outcome path for release one.",
+          "metric": "Feasibility",
+          "effort": "30 minutes",
+          "projectedScore": 63,
+          "delta": 10
+        },
+        {
+          "id": "evidence",
+          "title": "Get one external signal",
+          "action": "Show the promise to five target users and record which problem they recognize without prompting.",
+          "metric": "Evidence",
+          "effort": "1-3 days",
+          "projectedScore": 62,
+          "delta": 9
+        },
+        {
+          "id": "capacity",
+          "title": "Protect 12 hours a week",
+          "action": "Reserve the extra capacity on the calendar before adding another feature or dependency.",
+          "metric": "Momentum",
+          "effort": "10 minutes",
+          "projectedScore": 57,
+          "delta": 4
+        }
+      ],
+      "scenarioVariants": [
+        {
+          "id": "lean-launch",
+          "label": "Lean launch",
+          "score": 63,
+          "delta": 10,
+          "verdict": "Promising, trim scope",
+          "rationale": "Shows the score if release one becomes a single tiny workflow.",
+          "changes": [
+            "Scope: focused -> tiny"
+          ],
+          "risk": 49
+        },
+        {
+          "id": "proof-sprint",
+          "label": "Proof sprint",
+          "score": 68,
+          "delta": 15,
+          "verdict": "Promising, trim scope",
+          "rationale": "Shows the score if this week is used to earn stronger evidence before expanding.",
+          "changes": [
+            "Evidence: idea -> signals",
+            "Confidence: 3 -> 4",
+            "Hours/week: 8 -> 10"
+          ],
+          "risk": 56
+        },
+        {
+          "id": "scope-drift",
+          "label": "Scope drift",
+          "score": 39,
+          "delta": -14,
+          "verdict": "Reshape before building",
+          "rationale": "Shows the penalty if the build grows while the decision window tightens.",
+          "changes": [
+            "Scope: focused -> ambitious",
+            "Confidence: 3 -> 2",
+            "Deadline: 21 -> 14 days"
+          ],
+          "risk": 100
+        }
+      ],
+      "thisWeekPlan": {
+        "focus": "Find proof before adding surface area",
+        "availableHours": 8,
+        "checkpoint": "End the week with one external signal that either confirms or weakens the promise.",
+        "blocks": [
+          {
+            "label": "Frame",
+            "hours": 1,
+            "action": "Write the user promise, success signal, and non-goals."
+          },
+          {
+            "label": "Build",
+            "hours": 4,
+            "action": "Wire one input-to-output automation path with a manual fallback."
+          },
+          {
+            "label": "Test",
+            "hours": 2,
+            "action": "Run ten cases, including two failures, and record recovery steps."
+          },
+          {
+            "label": "Decide",
+            "hours": 1,
+            "action": "Re-score, compare against the baseline, and choose one next move."
+          }
+        ]
+      },
+      "stopConditions": [
+        "Do not expand scope until at least one target user confirms the problem exists.",
+        "Pause if two consecutive tests miss the smallest experiment's success signal.",
+        "Reshape the project if the core workflow still needs explanation after three user sessions."
+      ],
+      "nextSteps": [
+        "Write a one-sentence user promise and pin it above the build list.",
+        "Cut the first version until it can be tested in one focused session.",
+        "Choose one workflow that proves the idea without needing every feature.",
+        "Reserve the first 4 hours for a clickable happy path.",
+        "Document the API boundary before wiring background automation."
+      ],
+      "risks": [
+        "Score is assumption-heavy; collect one external signal before expanding the build."
+      ],
+      "timeline": [
+        {
+          "label": "Day 1",
+          "action": "Define the user, success signal, and what the first version will not do."
+        },
+        {
+          "label": "First build block",
+          "action": "Spend 6 hours on the smallest working flow."
+        },
+        {
+          "label": "Midpoint",
+          "action": "Test with real input, remove confusing steps, and update the score."
+        },
+        {
+          "label": "Ship window",
+          "action": "Publish a demo, capture feedback, and choose the next single improvement."
+        }
+      ],
+      "smallestExperiment": {
+        "build": "Automate one narrow input-to-output path with a visible manual fallback.",
+        "test": "Run ten representative cases, including two deliberate failure cases.",
+        "success": "Eight normal cases complete correctly and every failure is recoverable."
+      },
+      "questions": [
+        "Who is the first specific user, and what are they doing immediately before this?",
+        "What is the fastest external signal that would challenge this idea?",
+        "Which data source or integration is most likely to fail first?",
+        "What evidence would make you stop, narrow, or change direction?"
+      ],
+      "goNoGo": {
+        "decision": "CONDITIONAL",
+        "reason": "Do not commit a full build yet. Collect one external signal and re-score before expanding scope.",
+        "thresholds": {
+          "go": 72,
+          "noGo": 42
+        }
+      },
+      "killCriteria": [
+        "Kill this idea if five target conversations produce zero unprompted problem recognition.",
+        "Kill this shape if the smallest experiment fails twice with the same user type.",
+        "Kill this shape if no target user will spend 15 minutes on a prototype in the next two weeks.",
+        "Kill the build if the highest-risk dependency cannot be demonstrated once this week."
+      ],
+      "sensitivityTable": [
+        {
+          "input": "scope",
+          "direction": "narrower",
+          "from": "focused",
+          "to": "tiny",
+          "score": 63,
+          "delta": 10
+        },
+        {
+          "input": "scope",
+          "direction": "wider",
+          "from": "focused",
+          "to": "ambitious",
+          "score": 43,
+          "delta": -10
+        },
+        {
+          "input": "evidence",
+          "direction": "stronger",
+          "from": "idea",
+          "to": "signals",
+          "score": 62,
+          "delta": 9
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "less-time",
+          "from": "21",
+          "to": "7",
+          "score": 46,
+          "delta": -7
+        },
+        {
+          "input": "confidence",
+          "direction": "lower",
+          "from": "3",
+          "to": "2",
+          "score": 48,
+          "delta": -5
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "less-capacity",
+          "from": "8",
+          "to": "4",
+          "score": 48,
+          "delta": -5
+        },
+        {
+          "input": "confidence",
+          "direction": "higher",
+          "from": "3",
+          "to": "4",
+          "score": 57,
+          "delta": 4
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "more-capacity",
+          "from": "8",
+          "to": "12",
+          "score": 57,
+          "delta": 4
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "more-time",
+          "from": "21",
+          "to": "35",
+          "score": 54,
+          "delta": 1
+        }
+      ],
+      "evidenceLadder": [
+        {
+          "evidence": "idea",
+          "label": "Early estimate",
+          "score": 53,
+          "delta": 0,
+          "decision": "CONDITIONAL",
+          "verdict": "Prototype carefully",
+          "current": true
+        },
+        {
+          "evidence": "signals",
+          "label": "Directional",
+          "score": 62,
+          "delta": 9,
+          "decision": "CONDITIONAL",
+          "verdict": "Promising, trim scope",
+          "current": false
+        },
+        {
+          "evidence": "users",
+          "label": "Evidence-backed",
+          "score": 69,
+          "delta": 16,
+          "decision": "CONDITIONAL",
+          "verdict": "Promising, trim scope",
+          "current": false
+        }
+      ],
+      "flipPoints": []
+    }
+  },
+  {
+    "payload": {
+      "idea": "Build a platform with an API, dashboard, automation, and analytics.",
+      "goal": "Launch the complete platform.",
+      "deadlineDays": 21,
+      "hoursPerWeek": 4,
+      "confidence": 2,
+      "scope": "ambitious",
+      "riskAppetite": "high",
+      "evidence": "idea"
+    },
+    "result": {
+      "modelVersion": "9.0",
+      "score": 41,
+      "scoreRange": {
+        "low": 29,
+        "high": 53,
+        "margin": 12
+      },
+      "verdict": "Reshape before building",
+      "summary": "This needs a smaller promise and a sharper outcome. The first release target is \"Launch the complete platform\". Plan on about 4 hours per week over 21 days.",
+      "evidenceGrade": {
+        "label": "Early estimate",
+        "detail": "This score is driven mostly by assumptions and planning inputs."
+      },
+      "signals": [
+        "api",
+        "dashboard",
+        "launch"
+      ],
+      "metrics": {
+        "clarity": 69,
+        "feasibility": 36,
+        "momentum": 52,
+        "evidence": 20,
+        "risk": 100
+      },
+      "recommendedLever": {
+        "metric": "Feasibility",
+        "title": "Remove one feature family",
+        "action": "Move one complete feature group out of the first release and keep one end-to-end workflow.",
+        "rationale": "Scope reduction is the fastest way to make the current time and capacity credible."
+      },
+      "highestImpactMoves": [
+        {
+          "id": "scope",
+          "title": "Reduce to one workflow",
+          "action": "Remove one complete feature family and keep a single input-to-outcome path for release one.",
+          "metric": "Feasibility",
+          "effort": "30 minutes",
+          "projectedScore": 49,
+          "delta": 8
+        },
+        {
+          "id": "evidence",
+          "title": "Get one external signal",
+          "action": "Show the promise to five target users and record which problem they recognize without prompting.",
+          "metric": "Evidence",
+          "effort": "1-3 days",
+          "projectedScore": 48,
+          "delta": 7
+        },
+        {
+          "id": "capacity",
+          "title": "Protect 8 hours a week",
+          "action": "Reserve the extra capacity on the calendar before adding another feature or dependency.",
+          "metric": "Momentum",
+          "effort": "10 minutes",
+          "projectedScore": 45,
+          "delta": 4
+        }
+      ],
+      "scenarioVariants": [
+        {
+          "id": "lean-launch",
+          "label": "Lean launch",
+          "score": 59,
+          "delta": 18,
+          "verdict": "Promising, trim scope",
+          "rationale": "Shows the score if release one becomes a single tiny workflow.",
+          "changes": [
+            "Scope: ambitious -> tiny"
+          ],
+          "risk": 59
+        },
+        {
+          "id": "proof-sprint",
+          "label": "Proof sprint",
+          "score": 55,
+          "delta": 14,
+          "verdict": "Prototype carefully",
+          "rationale": "Shows the score if this week is used to earn stronger evidence before expanding.",
+          "changes": [
+            "Evidence: idea -> signals",
+            "Confidence: 2 -> 3",
+            "Hours/week: 4 -> 6"
+          ],
+          "risk": 92
+        },
+        {
+          "id": "scope-drift",
+          "label": "Scope drift",
+          "score": 37,
+          "delta": -4,
+          "verdict": "Reshape before building",
+          "rationale": "Shows the penalty if the build grows while the decision window tightens.",
+          "changes": [
+            "Confidence: 2 -> 1",
+            "Deadline: 21 -> 14 days"
+          ],
+          "risk": 100
+        }
+      ],
+      "thisWeekPlan": {
+        "focus": "Find proof before adding surface area",
+        "availableHours": 4,
+        "checkpoint": "End the week with one external signal that either confirms or weakens the promise.",
+        "blocks": [
+          {
+            "label": "Frame",
+            "hours": 1,
+            "action": "Write the user promise, success signal, and non-goals."
+          },
+          {
+            "label": "Build",
+            "hours": 1,
+            "action": "Wire one input-to-output automation path with a manual fallback."
+          },
+          {
+            "label": "Test",
+            "hours": 1,
+            "action": "Run ten cases, including two failures, and record recovery steps."
+          },
+          {
+            "label": "Decide",
+            "hours": 1,
+            "action": "Re-score, compare against the baseline, and choose one next move."
+          }
+        ]
+      },
+      "stopConditions": [
+        "Do not expand scope until at least one target user confirms the problem exists.",
+        "Pause if two consecutive tests miss the smallest experiment's success signal.",
+        "Reshape the project if the core workflow still needs explanation after three user sessions."
+      ],
+      "nextSteps": [
+        "Write a one-sentence user promise and pin it above the build list.",
+        "Cut the first version until it can be tested in one focused session.",
+        "Choose one workflow that proves the idea without needing every feature.",
+        "Reserve the first 4 hours for a clickable happy path.",
+        "Define three metrics that would make the dashboard worth opening twice."
+      ],
+      "risks": [
+        "Score is assumption-heavy; collect one external signal before expanding the build.",
+        "Scope is ambitious; freeze the first release around one user journey.",
+        "Confidence is low; validate with a throwaway prototype before committing."
+      ],
+      "timeline": [
+        {
+          "label": "Day 1",
+          "action": "Define the user, success signal, and what the first version will not do."
+        },
+        {
+          "label": "First build block",
+          "action": "Spend 4 hours on the smallest working flow."
+        },
+        {
+          "label": "Midpoint",
+          "action": "Test with real input, remove confusing steps, and update the score."
+        },
+        {
+          "label": "Ship window",
+          "action": "Publish a demo, capture feedback, and choose the next single improvement."
+        }
+      ],
+      "smallestExperiment": {
+        "build": "Use one realistic dataset and one decision-focused dashboard view.",
+        "test": "Give it to three target users without explaining the interface.",
+        "success": "At least two users identify the right next action within 60 seconds."
+      },
+      "questions": [
+        "Who is the first specific user, and what are they doing immediately before this?",
+        "What is the fastest external signal that would challenge this idea?",
+        "Which data source or integration is most likely to fail first?",
+        "What evidence would make you stop, narrow, or change direction?"
+      ],
+      "goNoGo": {
+        "decision": "NO-GO",
+        "reason": "The score is below the reshape line. Narrow the promise and re-score before spending another build week.",
+        "thresholds": {
+          "go": 72,
+          "noGo": 42
+        }
+      },
+      "killCriteria": [
+        "Kill this idea if five target conversations produce zero unprompted problem recognition.",
+        "Kill this shape if the smallest experiment fails twice with the same user type.",
+        "Kill this shape if no target user will spend 15 minutes on a prototype in the next two weeks.",
+        "Kill the current shape if a one-workflow slice cannot be described in one sentence."
+      ],
+      "sensitivityTable": [
+        {
+          "input": "scope",
+          "direction": "narrower",
+          "from": "ambitious",
+          "to": "focused",
+          "score": 49,
+          "delta": 8
+        },
+        {
+          "input": "evidence",
+          "direction": "stronger",
+          "from": "idea",
+          "to": "signals",
+          "score": 48,
+          "delta": 7
+        },
+        {
+          "input": "confidence",
+          "direction": "lower",
+          "from": "2",
+          "to": "1",
+          "score": 37,
+          "delta": -4
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "less-capacity",
+          "from": "4",
+          "to": "1",
+          "score": 37,
+          "delta": -4
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "more-capacity",
+          "from": "4",
+          "to": "8",
+          "score": 45,
+          "delta": 4
+        },
+        {
+          "input": "confidence",
+          "direction": "higher",
+          "from": "2",
+          "to": "3",
+          "score": 44,
+          "delta": 3
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "less-time",
+          "from": "21",
+          "to": "7",
+          "score": 38,
+          "delta": -3
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "more-time",
+          "from": "21",
+          "to": "35",
+          "score": 41,
+          "delta": 0
+        }
+      ],
+      "evidenceLadder": [
+        {
+          "evidence": "idea",
+          "label": "Early estimate",
+          "score": 41,
+          "delta": 0,
+          "decision": "NO-GO",
+          "verdict": "Reshape before building",
+          "current": true
+        },
+        {
+          "evidence": "signals",
+          "label": "Directional",
+          "score": 48,
+          "delta": 7,
+          "decision": "CONDITIONAL",
+          "verdict": "Prototype carefully",
+          "current": false
+        },
+        {
+          "evidence": "users",
+          "label": "Evidence-backed",
+          "score": 55,
+          "delta": 14,
+          "decision": "CONDITIONAL",
+          "verdict": "Prototype carefully",
+          "current": false
+        }
+      ],
+      "flipPoints": [
+        {
+          "input": "hoursPerWeek",
+          "from": "4",
+          "to": "5",
+          "score": 42,
+          "delta": 1,
+          "decision": "CONDITIONAL",
+          "currentDecision": "NO-GO"
+        },
+        {
+          "input": "confidence",
+          "from": "2",
+          "to": "3",
+          "score": 44,
+          "delta": 3,
+          "decision": "CONDITIONAL",
+          "currentDecision": "NO-GO"
+        },
+        {
+          "input": "evidence",
+          "from": "idea",
+          "to": "signals",
+          "score": 48,
+          "delta": 7,
+          "decision": "CONDITIONAL",
+          "currentDecision": "NO-GO"
+        },
+        {
+          "input": "scope",
+          "from": "ambitious",
+          "to": "focused",
+          "score": 49,
+          "delta": 8,
+          "decision": "CONDITIONAL",
+          "currentDecision": "NO-GO"
+        }
+      ]
+    }
+  },
+  {
+    "payload": {
+      "idea": "Ship a focused API prototype for one user workflow.",
+      "deadlineDays": 30,
+      "hoursPerWeek": 10,
+      "confidence": 5,
+      "scope": "tiny",
+      "riskAppetite": "low",
+      "evidence": "users"
+    },
+    "result": {
+      "modelVersion": "9.0",
+      "score": 89,
+      "scoreRange": {
+        "low": 86,
+        "high": 92,
+        "margin": 3
+      },
+      "verdict": "Green light",
+      "summary": "This has enough clarity and momentum for a first build. The first release target is \"Ship a usable first version\". Plan on about 10 hours per week over 30 days.",
+      "evidenceGrade": {
+        "label": "Evidence-backed",
+        "detail": "Observed user behavior makes this score more dependable."
+      },
+      "signals": [
+        "api",
+        "prototype",
+        "ship",
+        "user",
+        "workflow"
+      ],
+      "metrics": {
+        "clarity": 76,
+        "feasibility": 100,
+        "momentum": 100,
+        "evidence": 90,
+        "risk": 13
+      },
+      "recommendedLever": {
+        "metric": "Clarity",
+        "title": "Make the promise measurable",
+        "action": "Rewrite the release goal as one observable user outcome with a number or time limit.",
+        "rationale": "A sharper finish line improves prioritization before any code changes."
+      },
+      "highestImpactMoves": [
+        {
+          "id": "capacity",
+          "title": "Protect 12 hours a week",
+          "action": "Reserve the extra capacity on the calendar before adding another feature or dependency.",
+          "metric": "Momentum",
+          "effort": "10 minutes",
+          "projectedScore": 89,
+          "delta": 0
+        }
+      ],
+      "scenarioVariants": [
+        {
+          "id": "lean-launch",
+          "label": "Lean launch",
+          "score": 89,
+          "delta": 0,
+          "verdict": "Green light",
+          "rationale": "Shows the score if release one becomes a single tiny workflow.",
+          "changes": [
+            "Keep the current controls unchanged."
+          ],
+          "risk": 13
+        },
+        {
+          "id": "proof-sprint",
+          "label": "Proof sprint",
+          "score": 89,
+          "delta": 0,
+          "verdict": "Green light",
+          "rationale": "Shows the score if this week is used to earn stronger evidence before expanding.",
+          "changes": [
+            "Hours/week: 10 -> 12"
+          ],
+          "risk": 13
+        },
+        {
+          "id": "scope-drift",
+          "label": "Scope drift",
+          "score": 67,
+          "delta": -22,
+          "verdict": "Promising, trim scope",
+          "rationale": "Shows the penalty if the build grows while the decision window tightens.",
+          "changes": [
+            "Scope: tiny -> ambitious",
+            "Confidence: 5 -> 4",
+            "Deadline: 30 -> 14 days"
+          ],
+          "risk": 85
+        }
+      ],
+      "thisWeekPlan": {
+        "focus": "Ship one visible learning loop",
+        "availableHours": 10,
+        "checkpoint": "End the week with a tested happy path and one clear next decision.",
+        "blocks": [
+          {
+            "label": "Frame",
+            "hours": 2,
+            "action": "Write the user promise, success signal, and non-goals."
+          },
+          {
+            "label": "Build",
+            "hours": 5,
+            "action": "Wire one input-to-output automation path with a manual fallback."
+          },
+          {
+            "label": "Test",
+            "hours": 2,
+            "action": "Run ten cases, including two failures, and record recovery steps."
+          },
+          {
+            "label": "Decide",
+            "hours": 1,
+            "action": "Re-score, compare against the baseline, and choose one next move."
+          }
+        ]
+      },
+      "stopConditions": [
+        "Re-score before adding any feature that does not strengthen the release goal.",
+        "Pause if two consecutive tests miss the smallest experiment's success signal.",
+        "Reshape the project if the core workflow still needs explanation after three user sessions."
+      ],
+      "nextSteps": [
+        "Write a one-sentence user promise and pin it above the build list.",
+        "Choose one workflow that proves the idea without needing every feature.",
+        "Reserve the first 4 hours for a clickable happy path.",
+        "Document the API boundary before wiring background automation."
+      ],
+      "risks": [
+        "No major risk spikes detected; keep checking assumptions weekly."
+      ],
+      "timeline": [
+        {
+          "label": "Day 1",
+          "action": "Define the user, success signal, and what the first version will not do."
+        },
+        {
+          "label": "First build block",
+          "action": "Spend 6 hours on the smallest working flow."
+        },
+        {
+          "label": "Midpoint",
+          "action": "Test with real input, remove confusing steps, and update the score."
+        },
+        {
+          "label": "Ship window",
+          "action": "Publish a demo, capture feedback, and choose the next single improvement."
+        }
+      ],
+      "smallestExperiment": {
+        "build": "Automate one narrow input-to-output path with a visible manual fallback.",
+        "test": "Run ten representative cases, including two deliberate failure cases.",
+        "success": "Eight normal cases complete correctly and every failure is recoverable."
+      },
+      "questions": [
+        "Who is the first specific user, and what are they doing immediately before this?",
+        "Which data source or integration is most likely to fail first?",
+        "What evidence would make you stop, narrow, or change direction?"
+      ],
+      "goNoGo": {
+        "decision": "GO",
+        "reason": "Clarity, capacity, and evidence are strong enough to ship a narrow first version this cycle.",
+        "thresholds": {
+          "go": 72,
+          "noGo": 42
+        }
+      },
+      "killCriteria": [
+        "Kill this shape if the smallest experiment fails twice with the same user type.",
+        "Kill this shape if no target user will spend 15 minutes on a prototype in the next two weeks."
+      ],
+      "sensitivityTable": [
+        {
+          "input": "scope",
+          "direction": "wider",
+          "from": "tiny",
+          "to": "focused",
+          "score": 81,
+          "delta": -8
+        },
+        {
+          "input": "evidence",
+          "direction": "weaker",
+          "from": "users",
+          "to": "signals",
+          "score": 83,
+          "delta": -6
+        },
+        {
+          "input": "confidence",
+          "direction": "lower",
+          "from": "5",
+          "to": "4",
+          "score": 86,
+          "delta": -3
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "less-time",
+          "from": "30",
+          "to": "16",
+          "score": 87,
+          "delta": -2
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "less-capacity",
+          "from": "10",
+          "to": "6",
+          "score": 88,
+          "delta": -1
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "more-time",
+          "from": "30",
+          "to": "44",
+          "score": 89,
+          "delta": 0
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "more-capacity",
+          "from": "10",
+          "to": "14",
+          "score": 89,
+          "delta": 0
+        }
+      ],
+      "evidenceLadder": [
+        {
+          "evidence": "idea",
+          "label": "Early estimate",
+          "score": 75,
+          "delta": -14,
+          "decision": "CONDITIONAL",
+          "verdict": "Promising, trim scope",
+          "current": false
+        },
+        {
+          "evidence": "signals",
+          "label": "Directional",
+          "score": 83,
+          "delta": -6,
+          "decision": "GO",
+          "verdict": "Green light",
+          "current": false
+        },
+        {
+          "evidence": "users",
+          "label": "Evidence-backed",
+          "score": 89,
+          "delta": 0,
+          "decision": "GO",
+          "verdict": "Green light",
+          "current": true
+        }
+      ],
+      "flipPoints": [
+        {
+          "input": "evidence",
+          "from": "users",
+          "to": "idea",
+          "score": 75,
+          "delta": -14,
+          "decision": "CONDITIONAL",
+          "currentDecision": "GO"
+        }
+      ]
+    }
+  },
+  {
+    "payload": {
+      "idea": "Organize metadata for a catalogue.",
+      "goal": "Keep files findable.",
+      "deadlineDays": 7,
+      "hoursPerWeek": 2,
+      "confidence": 1,
+      "scope": "tiny",
+      "evidence": "idea"
+    },
+    "result": {
+      "modelVersion": "9.0",
+      "score": 35,
+      "scoreRange": {
+        "low": 23,
+        "high": 47,
+        "margin": 12
+      },
+      "verdict": "Reshape before building",
+      "summary": "This needs a smaller promise and a sharper outcome. The first release target is \"Keep files findable\". Plan on about 2 hours per week over 7 days.",
+      "evidenceGrade": {
+        "label": "Early estimate",
+        "detail": "This score is driven mostly by assumptions and planning inputs."
+      },
+      "signals": [],
+      "metrics": {
+        "clarity": 46,
+        "feasibility": 50,
+        "momentum": 39,
+        "evidence": 20,
+        "risk": 96
+      },
+      "recommendedLever": {
+        "metric": "Risk",
+        "title": "Test the most fragile assumption",
+        "action": "Name the assumption most likely to invalidate the project and test it before expanding scope.",
+        "rationale": "Reducing one unknown is more valuable than polishing several known parts."
+      },
+      "highestImpactMoves": [
+        {
+          "id": "evidence",
+          "title": "Get one external signal",
+          "action": "Show the promise to five target users and record which problem they recognize without prompting.",
+          "metric": "Evidence",
+          "effort": "1-3 days",
+          "projectedScore": 44,
+          "delta": 9
+        },
+        {
+          "id": "deadline",
+          "title": "Move the decision window to 30 days",
+          "action": "Use the additional time for one build-test-revise loop, not for expanding scope.",
+          "metric": "Risk",
+          "effort": "5 minutes",
+          "projectedScore": 43,
+          "delta": 8
+        },
+        {
+          "id": "capacity",
+          "title": "Protect 6 hours a week",
+          "action": "Reserve the extra capacity on the calendar before adding another feature or dependency.",
+          "metric": "Momentum",
+          "effort": "10 minutes",
+          "projectedScore": 40,
+          "delta": 5
+        }
+      ],
+      "scenarioVariants": [
+        {
+          "id": "lean-launch",
+          "label": "Lean launch",
+          "score": 42,
+          "delta": 7,
+          "verdict": "Prototype carefully",
+          "rationale": "Shows the score if release one becomes a single tiny workflow.",
+          "changes": [
+            "Deadline: 7 -> 21 days"
+          ],
+          "risk": 68
+        },
+        {
+          "id": "proof-sprint",
+          "label": "Proof sprint",
+          "score": 52,
+          "delta": 17,
+          "verdict": "Prototype carefully",
+          "rationale": "Shows the score if this week is used to earn stronger evidence before expanding.",
+          "changes": [
+            "Evidence: idea -> signals",
+            "Confidence: 1 -> 2",
+            "Hours/week: 2 -> 4"
+          ],
+          "risk": 77
+        },
+        {
+          "id": "scope-drift",
+          "label": "Scope drift",
+          "score": 23,
+          "delta": -12,
+          "verdict": "Reshape before building",
+          "rationale": "Shows the penalty if the build grows while the decision window tightens.",
+          "changes": [
+            "Scope: tiny -> ambitious"
+          ],
+          "risk": 100
+        }
+      ],
+      "thisWeekPlan": {
+        "focus": "Find proof before adding surface area",
+        "availableHours": 2,
+        "checkpoint": "End the week with one external signal that either confirms or weakens the promise.",
+        "blocks": [
+          {
+            "label": "Frame",
+            "hours": 1,
+            "action": "Write the user promise, success signal, and non-goals."
+          },
+          {
+            "label": "Build",
+            "hours": 1,
+            "action": "Build the smallest end-to-end happy path."
+          },
+          {
+            "label": "Test",
+            "hours": 0,
+            "action": "Test with three target users or representative scenarios."
+          },
+          {
+            "label": "Decide",
+            "hours": 0,
+            "action": "Re-score, compare against the baseline, and choose one next move."
+          }
+        ]
+      },
+      "stopConditions": [
+        "Do not expand scope until at least one target user confirms the problem exists.",
+        "Pause if two consecutive tests miss the smallest experiment's success signal.",
+        "Reshape the project if the core workflow still needs explanation after three user sessions."
+      ],
+      "nextSteps": [
+        "Write a one-sentence user promise and pin it above the build list.",
+        "Cut the first version until it can be tested in one focused session.",
+        "Choose one workflow that proves the idea without needing every feature.",
+        "Reserve the first 2 hours for a clickable happy path."
+      ],
+      "risks": [
+        "Score is assumption-heavy; collect one external signal before expanding the build.",
+        "Timeline is tight; defer polish until the core loop works end to end.",
+        "Confidence is low; validate with a throwaway prototype before committing."
+      ],
+      "timeline": [
+        {
+          "label": "Day 1",
+          "action": "Define the user, success signal, and what the first version will not do."
+        },
+        {
+          "label": "First build block",
+          "action": "Spend 2 hours on the smallest working flow."
+        },
+        {
+          "label": "Midpoint",
+          "action": "Test with real input, remove confusing steps, and update the score."
+        },
+        {
+          "label": "Ship window",
+          "action": "Publish a demo, capture feedback, and choose the next single improvement."
+        }
+      ],
+      "smallestExperiment": {
+        "build": "Time-box one day: create the smallest end-to-end version that delivers the core promise once.",
+        "test": "Put it in front of three people who match the intended user.",
+        "success": "Two people complete the core workflow without step-by-step help."
+      },
+      "questions": [
+        "Who is the first specific user, and what are they doing immediately before this?",
+        "What is the fastest external signal that would challenge this idea?",
+        "Which assumption is causing the low confidence, and can it be tested today?",
+        "What evidence would make you stop, narrow, or change direction?"
+      ],
+      "goNoGo": {
+        "decision": "NO-GO",
+        "reason": "The score is below the reshape line. Narrow the promise and re-score before spending another build week.",
+        "thresholds": {
+          "go": 72,
+          "noGo": 42
+        }
+      },
+      "killCriteria": [
+        "Kill this idea if five target conversations produce zero unprompted problem recognition.",
+        "Kill this shape if the smallest experiment fails twice with the same user type.",
+        "Kill this shape if no target user will spend 15 minutes on a prototype in the next two weeks.",
+        "Kill the current deadline if the happy path is not testable within seven days."
+      ],
+      "sensitivityTable": [
+        {
+          "input": "evidence",
+          "direction": "stronger",
+          "from": "idea",
+          "to": "signals",
+          "score": 44,
+          "delta": 9
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "more-time",
+          "from": "7",
+          "to": "21",
+          "score": 42,
+          "delta": 7
+        },
+        {
+          "input": "scope",
+          "direction": "wider",
+          "from": "tiny",
+          "to": "focused",
+          "score": 29,
+          "delta": -6
+        },
+        {
+          "input": "confidence",
+          "direction": "higher",
+          "from": "1",
+          "to": "2",
+          "score": 40,
+          "delta": 5
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "more-capacity",
+          "from": "2",
+          "to": "6",
+          "score": 40,
+          "delta": 5
+        },
+        {
+          "input": "hoursPerWeek",
+          "direction": "less-capacity",
+          "from": "2",
+          "to": "1",
+          "score": 34,
+          "delta": -1
+        },
+        {
+          "input": "deadlineDays",
+          "direction": "less-time",
+          "from": "7",
+          "to": "1",
+          "score": 35,
+          "delta": 0
+        }
+      ],
+      "evidenceLadder": [
+        {
+          "evidence": "idea",
+          "label": "Early estimate",
+          "score": 35,
+          "delta": 0,
+          "decision": "NO-GO",
+          "verdict": "Reshape before building",
+          "current": true
+        },
+        {
+          "evidence": "signals",
+          "label": "Directional",
+          "score": 44,
+          "delta": 9,
+          "decision": "CONDITIONAL",
+          "verdict": "Prototype carefully",
+          "current": false
+        },
+        {
+          "evidence": "users",
+          "label": "Evidence-backed",
+          "score": 51,
+          "delta": 16,
+          "decision": "CONDITIONAL",
+          "verdict": "Prototype carefully",
+          "current": false
+        }
+      ],
+      "flipPoints": [
+        {
+          "input": "deadlineDays",
+          "from": "7",
+          "to": "19",
+          "score": 42,
+          "delta": 7,
+          "decision": "CONDITIONAL",
+          "currentDecision": "NO-GO"
+        },
+        {
+          "input": "hoursPerWeek",
+          "from": "2",
+          "to": "8",
+          "score": 42,
+          "delta": 7,
+          "decision": "CONDITIONAL",
+          "currentDecision": "NO-GO"
+        },
+        {
+          "input": "evidence",
+          "from": "idea",
+          "to": "signals",
+          "score": 44,
+          "delta": 9,
+          "decision": "CONDITIONAL",
+          "currentDecision": "NO-GO"
+        },
+        {
+          "input": "confidence",
+          "from": "1",
+          "to": "3",
+          "score": 45,
+          "delta": 10,
+          "decision": "CONDITIONAL",
+          "currentDecision": "NO-GO"
+        }
+      ]
+    }
+  }
+]

@@ -1,13 +1,13 @@
 {
   "name": "pulseboard-studio",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "A Python and JavaScript project-scoring dashboard.",
   "scripts": {
     "start": "python3 server.py",
     "test": "npm run test:js && npm run test:py",
-    "test:js": "node --check static/app.js && node --test tests/core.test.js",
+    "test:js": "node --check static/app.js && node --check static/core.js && node --check static/engine.js && node --test tests/core.test.js tests/engine-parity.test.js",
     "test:py": "python3 -m unittest discover -s tests"
   },
   "keywords": [

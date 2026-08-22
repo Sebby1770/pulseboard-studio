@@ -15,6 +15,7 @@ import {
   serializeDraft,
   titleCase,
 } from "./core.js";
+import { MODEL_VERSION, ProjectInputError, analyseProject } from "./engine.js";
 
 const form = document.querySelector("#projectForm");
 const apiStatus = document.querySelector("#apiStatus");
@@ -33,6 +34,7 @@ const risks = document.querySelector("#risks");
 const stopConditions = document.querySelector("#stopConditions");
 const killCriteria = document.querySelector("#killCriteria");
 const goNoGo = document.querySelector("#goNoGo");
+const goNoGoReason = document.querySelector("#goNoGoReason");
 const sensitivitySection = document.querySelector("#sensitivitySection");
 const sensitivityList = document.querySelector("#sensitivityList");
 const ladderSection = document.querySelector("#ladderSection");
@@ -66,6 +68,7 @@ const comparisonScore = document.querySelector("#comparisonScore");
 const comparisonGrid = document.querySelector("#comparisonGrid");
 const historyList = document.querySelector("#historyList");
 const sampleButton = document.querySelector("#sampleButton");
+const sampleChips = document.querySelector("#sampleChips");
 const clearButton = document.querySelector("#clearButton");
 const clearHistoryButton = document.querySelector("#clearHistoryButton");
 const confidence = document.querySelector("#confidence");
@@ -76,24 +79,76 @@ const shareLinkButton = document.querySelector("#shareLinkButton");
 const baselineButton = document.querySelector("#baselineButton");
 const draftStatus = document.querySelector("#draftStatus");
 const formError = document.querySelector("#formError");
+const themeToggle = document.querySelector("#themeToggle");
+const resultTabs = document.querySelector("#resultTabs");
+const tabList = document.querySelector("#tabList");
+const primaryAction = form.querySelector(".primary-action");
 
 const HISTORY_KEY = "pulseboard.history.v2";
 const LEGACY_HISTORY_KEY = "pulseboard.history.v1";
 const DRAFT_KEY = "pulseboard.draft.v1";
 const BASELINE_KEY = "pulseboard.baseline.v1";
+const THEME_KEY = "pulseboard.theme.v1";
+const TABS = ["plan", "moves", "sensitivity", "evidence"];
+const EVIDENCE_ORDER = ["idea", "signals", "users"];
+
+const SAMPLE_BRIEFS = {
+  saas: {
+    idea: "A lightweight customer dashboard that tracks API uptime, usage spikes, support notes, and launch blockers for small SaaS teams.",
+    goal: "Ship a demo that shows live health signals and one weekly action list.",
+    deadlineDays: 21,
+    hoursPerWeek: 8,
+    confidence: 4,
+    scope: "focused",
+    riskAppetite: "medium",
+    evidence: "signals",
+  },
+  api: {
+    idea: "Automate one customer onboarding workflow from an API webhook to a review queue with a manual fallback.",
+    goal: "Ship a reliable input-to-output path that operators can recover when a case fails.",
+    deadlineDays: 14,
+    hoursPerWeek: 6,
+    confidence: 3,
+    scope: "focused",
+    riskAppetite: "medium",
+    evidence: "idea",
+  },
+  learn: {
+    idea: "A tiny prototype that helps a new team learn how users ship weekly status updates.",
+    goal: "Learn whether one user will complete a status update without training.",
+    deadlineDays: 7,
+    hoursPerWeek: 4,
+    confidence: 2,
+    scope: "tiny",
+    riskAppetite: "low",
+    evidence: "idea",
+  },
+  platform: {
+    idea: "Build a platform with an API, dashboard, automation, and analytics for every customer workflow.",
+    goal: "Launch the complete platform.",
+    deadlineDays: 21,
+    hoursPerWeek: 4,
+    confidence: 2,
+    scope: "ambitious",
+    riskAppetite: "high",
+    evidence: "idea",
+  },
+};
+
 let lastAnalysis = null;
 let draftTimer = null;
+let engineMode = "on-device";
+let usedOnDevice = false;
+let scoring = false;
 
-const sampleProject = {
-  idea: "A lightweight customer dashboard that tracks API uptime, usage spikes, support notes, and launch blockers for small SaaS teams.",
-  goal: "Ship a demo that shows live health signals and one weekly action list.",
-  deadlineDays: 21,
-  hoursPerWeek: 8,
-  confidence: 4,
-  scope: "focused",
-  riskAppetite: "medium",
-  evidence: "signals",
-};
+function apiUrl(path = "api/score") {
+  return new URL(path, document.baseURI).toString();
+}
+
+function engineStatusLabel() {
+  const source = usedOnDevice || engineMode !== "api" ? "on-device" : "API";
+  return `Engine ${MODEL_VERSION} · ${source}`;
+}
 
 function formPayload() {
   const data = new FormData(form);
@@ -113,16 +168,40 @@ async function scoreProject(payload) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 8000);
   try {
-    const response = await fetch("/api/score", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-    const result = await response.json();
-    if (!response.ok) {
+    let response;
+    try {
+      response = await fetch(apiUrl(), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+    } catch {
+      usedOnDevice = true;
+      return analyseProject(payload);
+    }
+
+    const raw = await response.text();
+    let result;
+    try {
+      result = JSON.parse(raw);
+    } catch {
+      if (!response.ok) {
+        usedOnDevice = true;
+        return analyseProject(payload);
+      }
+      throw new Error("Scoring API did not return JSON.");
+    }
+
+    if (response.status >= 400 && response.status < 500) {
       throw new Error(result.error || "Scoring failed.");
     }
+    if (!response.ok) {
+      usedOnDevice = true;
+      return analyseProject(payload);
+    }
+    usedOnDevice = false;
+    engineMode = "api";
     return result;
   } finally {
     window.clearTimeout(timeout);
@@ -131,28 +210,45 @@ async function scoreProject(payload) {
 
 async function checkApi() {
   try {
-    const response = await fetch("/api/score", { headers: { accept: "application/json" } });
-    const status = await response.json();
-    if (!response.ok) throw new Error(status.error || "API unavailable.");
-    modelVersion.textContent = `Engine ${status.modelVersion || "ready"}`;
-    setStatus("API ready", "ok");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 4000);
+    const response = await fetch(apiUrl(), {
+      headers: { accept: "application/json" },
+      signal: controller.signal,
+    });
+    window.clearTimeout(timeout);
+    const raw = await response.text();
+    const status = JSON.parse(raw);
+    if (!response.ok || !status.modelVersion) throw new Error("offline");
+    engineMode = "api";
+    usedOnDevice = false;
+    modelVersion.textContent = `Engine ${status.modelVersion}`;
+    setStatus(`Engine ${status.modelVersion} · API`, "ok");
   } catch {
-    setStatus("API offline", "error");
+    engineMode = "on-device";
+    usedOnDevice = true;
+    modelVersion.textContent = `Engine ${MODEL_VERSION}`;
+    setStatus(`Engine ${MODEL_VERSION} · on-device`, "ok");
   }
 }
 
 function renderResult(result) {
   resultPanel.dataset.ready = "true";
-  modelVersion.textContent = `Engine ${result.modelVersion || "ready"}`;
+  resultTabs.hidden = false;
+  modelVersion.textContent = `Engine ${result.modelVersion || MODEL_VERSION}`;
   verdict.textContent = result.verdict;
   if (result.goNoGo) {
-    goNoGo.textContent = `${result.goNoGo.decision}: ${result.goNoGo.reason}`;
+    goNoGo.textContent = result.goNoGo.decision;
     goNoGo.hidden = false;
     goNoGo.dataset.decision = result.goNoGo.decision;
+    goNoGoReason.textContent = result.goNoGo.reason;
+    goNoGoReason.hidden = false;
   } else {
     goNoGo.textContent = "";
     goNoGo.hidden = true;
     delete goNoGo.dataset.decision;
+    goNoGoReason.textContent = "";
+    goNoGoReason.hidden = true;
   }
   summary.textContent = result.summary;
   evidenceNote.textContent = `${result.evidenceGrade.label}: ${result.evidenceGrade.detail}`;
@@ -204,7 +300,9 @@ function renderResult(result) {
   renderWeekPlan(result.thisWeekPlan);
   nextSteps.replaceChildren(...result.nextSteps.map((step) => listItem(step)));
   risks.replaceChildren(...result.risks.map((risk) => listItem(risk)));
-  stopConditions.replaceChildren(...(result.stopConditions || []).map((condition) => listItem(condition)));
+  stopConditions.replaceChildren(
+    ...(result.stopConditions || []).map((condition) => listItem(condition)),
+  );
   killCriteria.replaceChildren(...(result.killCriteria || []).map((item) => listItem(item)));
   questions.replaceChildren(...result.questions.map((question) => listItem(question)));
   timeline.replaceChildren(
@@ -243,22 +341,34 @@ function renderResult(result) {
 function renderScenarioVariants(variants) {
   scenarioGrid.replaceChildren(
     ...variants.map((variant) => {
-      const item = document.createElement("article");
+      const item = document.createElement("button");
       const label = document.createElement("span");
       const score = document.createElement("strong");
       const verdictText = document.createElement("em");
-      const detail = document.createElement("p");
-      const changes = document.createElement("ul");
+      const detail = document.createElement("span");
+      const changes = document.createElement("span");
 
+      item.type = "button";
       item.className = "scenario-card";
       item.dataset.delta = variant.delta > 0 ? "up" : variant.delta < 0 ? "down" : "flat";
+      item.setAttribute("aria-label", `Apply scenario ${variant.label}`);
       label.textContent = variant.label;
       score.textContent = `${variant.delta > 0 ? "+" : ""}${variant.delta}`;
       verdictText.textContent = `${variant.score}/100 - ${variant.verdict}`;
+      detail.className = "detail";
       detail.textContent = variant.rationale;
-      changes.replaceChildren(...variant.changes.map((change) => listItem(change)));
-
+      changes.className = "scenario-changes";
+      changes.replaceChildren(
+        ...variant.changes.map((change) => {
+          const line = document.createElement("span");
+          line.textContent = change;
+          return line;
+        }),
+      );
       item.append(label, score, verdictText, detail, changes);
+      item.addEventListener("click", () => {
+        applyAndAnalyze(patchFromChanges(formPayload(), variant.changes));
+      });
       return item;
     }),
   );
@@ -274,17 +384,23 @@ function renderSensitivity(rows) {
 
   sensitivityList.replaceChildren(
     ...rows.map((row) => {
-      const item = document.createElement("article");
+      const item = document.createElement("button");
       const label = document.createElement("span");
       const score = document.createElement("strong");
-      const detail = document.createElement("p");
+      const detail = document.createElement("span");
       const sign = row.delta > 0 ? "+" : "";
+      item.type = "button";
       item.className = "sensitivity-row";
       item.dataset.delta = row.delta > 0 ? "up" : row.delta < 0 ? "down" : "flat";
+      item.setAttribute("aria-label", `Apply ${row.input} ${row.direction}`);
       label.textContent = `${row.input} ${row.direction}`;
       score.textContent = `${sign}${row.delta}`;
+      detail.className = "detail";
       detail.textContent = `${row.from} -> ${row.to} lands at ${row.score}/100`;
       item.append(label, score, detail);
+      item.addEventListener("click", () => {
+        applyAndAnalyze(patchFromField(formPayload(), row.input, row.to));
+      });
       return item;
     }),
   );
@@ -300,17 +416,22 @@ function renderEvidenceLadder(rungs) {
 
   ladderList.replaceChildren(
     ...rungs.map((rung) => {
-      const item = document.createElement("article");
+      const item = document.createElement("button");
       const label = document.createElement("span");
       const score = document.createElement("strong");
       const decision = document.createElement("em");
+      item.type = "button";
       item.className = "ladder-rung";
       if (rung.current) item.dataset.current = "true";
       item.dataset.decision = rung.decision;
+      item.setAttribute("aria-label", `Set evidence to ${rung.evidence}`);
       label.textContent = rung.label;
       score.textContent = `${rung.score}/100`;
       decision.textContent = rung.decision;
       item.append(label, score, decision);
+      item.addEventListener("click", () => {
+        applyAndAnalyze({ ...formPayload(), evidence: rung.evidence });
+      });
       return item;
     }),
   );
@@ -326,17 +447,23 @@ function renderFlipPoints(points) {
 
   flipList.replaceChildren(
     ...points.map((point) => {
-      const item = document.createElement("article");
+      const item = document.createElement("button");
       const label = document.createElement("span");
       const score = document.createElement("strong");
-      const detail = document.createElement("p");
+      const detail = document.createElement("span");
       const sign = point.delta > 0 ? "+" : "";
+      item.type = "button";
       item.className = "flip-row";
       item.dataset.decision = point.decision;
+      item.setAttribute("aria-label", `Apply flip on ${point.input}`);
       label.textContent = point.input;
       score.textContent = point.decision;
+      detail.className = "detail";
       detail.textContent = `${point.from} -> ${point.to} (${sign}${point.delta} to ${point.score}/100)`;
       item.append(label, score, detail);
+      item.addEventListener("click", () => {
+        applyAndAnalyze(patchFromField(formPayload(), point.input, point.to));
+      });
       return item;
     }),
   );
@@ -376,12 +503,15 @@ function renderWeekPlan(plan) {
 function renderImpactMoves(moves) {
   impactList.replaceChildren(
     ...moves.map((move, index) => {
-      const item = document.createElement("article");
+      const item = document.createElement("button");
+      item.type = "button";
       item.className = "impact-item";
+      item.setAttribute("aria-label", `Apply move ${move.title}`);
       const rank = document.createElement("span");
       const copy = document.createElement("div");
       const title = document.createElement("strong");
-      const detail = document.createElement("span");
+      const action = document.createElement("span");
+      const meta = document.createElement("span");
       const score = document.createElement("div");
       const delta = document.createElement("strong");
       const projected = document.createElement("small");
@@ -390,14 +520,20 @@ function renderImpactMoves(moves) {
       rank.textContent = String(index + 1).padStart(2, "0");
       copy.className = "impact-copy";
       title.textContent = move.title;
-      detail.textContent = `${move.action} ${move.metric} lift, ${move.effort}.`;
+      action.className = "impact-action";
+      action.textContent = move.action;
+      meta.className = "impact-meta";
+      meta.textContent = `${move.metric} · ${move.effort}`;
       score.className = "impact-score";
       delta.textContent = move.delta > 0 ? `+${move.delta}` : String(move.delta);
       projected.textContent = `to ${move.projectedScore}`;
 
-      copy.append(title, detail);
+      copy.append(title, action, meta);
       score.append(delta, projected);
       item.append(rank, copy, score);
+      item.addEventListener("click", () => {
+        applyAndAnalyze(patchFromMove(formPayload(), move.id));
+      });
       return item;
     }),
   );
@@ -528,26 +664,39 @@ function renderHistory() {
         delta.dataset.direction = entry.delta > 0 ? "up" : "down";
       }
       button.append(score, verdictText, idea, delta);
-      button.addEventListener("click", () => {
-        if (entry.payload && entry.result) {
-          const fallbackResult = history.find(
-            (candidate) => candidate.id !== entry.id && candidate.result,
-          )?.result;
-          const target = comparisonTarget(fallbackResult);
-          applyPayload(entry.payload);
-          renderResult(entry.result);
-          const comparison = renderComparison(target.result, entry.result, target.context);
-          lastAnalysis = { payload: entry.payload, result: entry.result, comparison };
-          saveDraft(entry.payload, "Draft restored");
-          setStatus("Snapshot restored", "ok");
-        } else {
-          form.idea.value = entry.idea;
-        }
-        form.idea.focus();
-      });
+      button.addEventListener("click", () => restoreHistoryEntry(entry, history));
       return button;
     }),
   );
+}
+
+async function restoreHistoryEntry(entry, history) {
+  if (!(entry.payload && entry.result)) {
+    form.idea.value = entry.idea;
+    form.idea.focus();
+    return;
+  }
+
+  applyPayload(entry.payload);
+  saveDraft(entry.payload, "Draft restored");
+  const fallbackResult = history.find(
+    (candidate) => candidate.id !== entry.id && candidate.result,
+  )?.result;
+  const target = comparisonTarget(fallbackResult);
+  let result = entry.result;
+  const stale = entry.result.modelVersion !== MODEL_VERSION;
+  if (stale) {
+    try {
+      result = await scoreProject(entry.payload);
+    } catch {
+      result = entry.result;
+    }
+  }
+  renderResult(result);
+  const comparison = renderComparison(target.result, result, target.context);
+  lastAnalysis = { payload: entry.payload, result, comparison };
+  setStatus(stale && result !== entry.result ? engineStatusLabel() : "Snapshot restored", "ok");
+  form.idea.focus();
 }
 
 function applyPayload(payload) {
@@ -563,14 +712,59 @@ function applyPayload(payload) {
   form.querySelector(`[name="evidence"][value="${normalized.evidence}"]`).checked = true;
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const payload = formPayload();
+function patchFromMove(payload, moveId) {
+  const next = { ...payload };
+  if (moveId === "evidence") {
+    const index = EVIDENCE_ORDER.indexOf(next.evidence);
+    next.evidence = EVIDENCE_ORDER[Math.min(EVIDENCE_ORDER.length - 1, index + 1)];
+  } else if (moveId === "scope") {
+    next.scope = next.scope === "ambitious" ? "focused" : "tiny";
+  } else if (moveId === "capacity") {
+    next.hoursPerWeek = Math.min(12, next.hoursPerWeek + 4);
+  } else if (moveId === "deadline") {
+    next.deadlineDays = Math.max(30, next.deadlineDays + 14);
+  } else if (moveId === "confidence") {
+    next.confidence = Math.min(5, next.confidence + 1);
+  }
+  return next;
+}
+
+function patchFromField(payload, input, to) {
+  const next = { ...payload };
+  if (input === "hoursPerWeek" || input === "deadlineDays" || input === "confidence") {
+    next[input] = Number(to);
+  } else if (input === "evidence" || input === "scope") {
+    next[input] = to;
+  }
+  return next;
+}
+
+function patchFromChanges(payload, changes) {
+  const next = { ...payload };
+  for (const change of changes) {
+    const scope = /^Scope: \S+ -> (\S+)$/.exec(change);
+    const evidence = /^Evidence: \S+ -> (\S+)$/.exec(change);
+    const confidenceMatch = /^Confidence: \S+ -> (\S+)$/.exec(change);
+    const hours = /^Hours\/week: \S+ -> (\S+)$/.exec(change);
+    const deadline = /^Deadline: \S+ -> (\S+) days$/.exec(change);
+    if (scope) next.scope = scope[1];
+    if (evidence) next.evidence = evidence[1];
+    if (confidenceMatch) next.confidence = Number(confidenceMatch[1]);
+    if (hours) next.hoursPerWeek = Number(hours[1]);
+    if (deadline) next.deadlineDays = Number(deadline[1]);
+  }
+  return next;
+}
+
+async function runAnalysis(payload) {
+  if (scoring) return null;
   const previousResult = loadHistory().find((entry) => entry.result)?.result;
   const target = comparisonTarget(previousResult);
   setFormError("");
   setStatus("Scoring", "busy");
-  form.querySelector(".primary-action").disabled = true;
+  scoring = true;
+  primaryAction.disabled = true;
+  primaryAction.classList.add("is-scoring");
   try {
     const result = await scoreProject(payload);
     renderResult(result);
@@ -578,20 +772,85 @@ form.addEventListener("submit", async (event) => {
     lastAnalysis = { payload, result, comparison };
     saveHistory(payload, result);
     saveDraft(payload);
-    setStatus("API ok", "ok");
+    setStatus(engineStatusLabel(), "ok");
+    return result;
   } catch (error) {
-    setStatus(error.name === "AbortError" ? "Timed out" : "Needs API", "error");
-    summary.textContent = error.message;
-    setFormError(error.message);
-    if (!payload.idea.trim()) form.idea.focus();
+    const timedOut = error.name === "AbortError";
+    const message = error.message || "Scoring failed.";
+    setStatus(timedOut ? "Timed out" : engineStatusLabel(), timedOut ? "error" : "ok");
+    summary.textContent = message;
+    setFormError(message);
+    if (error instanceof ProjectInputError || !payload.idea.trim()) form.idea.focus();
+    return null;
   } finally {
-    form.querySelector(".primary-action").disabled = false;
+    scoring = false;
+    primaryAction.disabled = false;
+    primaryAction.classList.remove("is-scoring");
+  }
+}
+
+async function applyAndAnalyze(payload, statusMessage) {
+  const normalized = normalizePayload(payload);
+  applyPayload(normalized);
+  saveDraft(normalized);
+  const result = await runAnalysis(normalized);
+  if (result && statusMessage) setStatus(statusMessage, "ok");
+}
+
+function selectTab(id) {
+  for (const tab of TABS) {
+    const button = document.querySelector(`#tab-${tab}`);
+    const panel = document.querySelector(`#panel-${tab}`);
+    const selected = tab === id;
+    button.setAttribute("aria-selected", selected ? "true" : "false");
+    button.tabIndex = selected ? 0 : -1;
+    panel.hidden = !selected;
+  }
+}
+
+function currentTheme() {
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.textContent = theme === "dark" ? "Light" : "Dark";
+  themeToggle.setAttribute(
+    "aria-label",
+    theme === "dark" ? "Switch to light theme" : "Switch to dark theme",
+  );
+}
+
+function initTheme() {
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === "light" || stored === "dark") {
+    applyTheme(stored);
+    return;
+  }
+  applyTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+}
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await runAnalysis(formPayload());
+});
+
+form.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    form.requestSubmit();
   }
 });
 
 sampleButton.addEventListener("click", () => {
-  applyPayload(sampleProject);
-  saveDraft(sampleProject);
+  applyAndAnalyze(SAMPLE_BRIEFS.saas);
+});
+
+sampleChips.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-sample]");
+  if (!button) return;
+  const sample = SAMPLE_BRIEFS[button.dataset.sample];
+  if (sample) applyAndAnalyze(sample);
 });
 
 clearButton.addEventListener("click", () => {
@@ -604,6 +863,8 @@ clearButton.addEventListener("click", () => {
   goNoGo.textContent = "";
   goNoGo.hidden = true;
   delete goNoGo.dataset.decision;
+  goNoGoReason.textContent = "";
+  goNoGoReason.hidden = true;
   sensitivityList.replaceChildren();
   sensitivitySection.hidden = true;
   ladderList.replaceChildren();
@@ -640,6 +901,8 @@ clearButton.addEventListener("click", () => {
   comparisonContext.hidden = true;
   primaryResults.hidden = true;
   secondaryResults.hidden = true;
+  resultTabs.hidden = true;
+  selectTab("plan");
   copyMemoButton.disabled = true;
   downloadMemoButton.disabled = true;
   shareLinkButton.disabled = true;
@@ -651,7 +914,7 @@ clearButton.addEventListener("click", () => {
   window.history.replaceState(null, "", window.location.pathname);
   draftStatus.textContent = "";
   setFormError("");
-  setStatus("API idle");
+  setStatus(engineStatusLabel(), "ok");
 });
 
 clearHistoryButton.addEventListener("click", () => {
@@ -722,6 +985,30 @@ baselineButton.addEventListener("click", () => {
   setStatus("Baseline set", "ok");
 });
 
+tabList.addEventListener("click", (event) => {
+  const button = event.target.closest("[role='tab']");
+  if (!button) return;
+  selectTab(button.id.replace("tab-", ""));
+});
+
+tabList.addEventListener("keydown", (event) => {
+  const current = TABS.indexOf(document.activeElement?.id?.replace("tab-", "") || "");
+  if (current < 0) return;
+  if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+    event.preventDefault();
+    const offset = event.key === "ArrowRight" ? 1 : -1;
+    const next = TABS[(current + offset + TABS.length) % TABS.length];
+    selectTab(next);
+    document.querySelector(`#tab-${next}`).focus();
+  }
+});
+
+themeToggle.addEventListener("click", () => {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  applyTheme(next);
+  localStorage.setItem(THEME_KEY, next);
+});
+
 function scheduleDraftSave() {
   window.clearTimeout(draftTimer);
   draftStatus.textContent = "Saving draft";
@@ -747,12 +1034,11 @@ function restoreDraft() {
 
 function restoreSharedScenario() {
   const shared = parseShareUrl(window.location.href);
-  if (!shared) return false;
+  if (!shared) return null;
   applyPayload(shared);
-  saveDraft(shared, "Shared scenario loaded");
+  saveDraft(shared, "Shared brief loaded");
   window.history.replaceState(null, "", buildShareUrl(shared, window.location.href));
-  setStatus("Scenario loaded", "ok");
-  return true;
+  return shared;
 }
 
 function setFormError(message) {
@@ -760,6 +1046,12 @@ function setFormError(message) {
   formError.hidden = !message;
 }
 
-if (!restoreSharedScenario()) restoreDraft();
-checkApi();
+initTheme();
+selectTab("plan");
+const sharedBrief = restoreSharedScenario();
+if (!sharedBrief) restoreDraft();
 renderHistory();
+checkApi().then(() => {
+  if (!sharedBrief) return;
+  applyAndAnalyze(sharedBrief, "Shared brief loaded");
+});

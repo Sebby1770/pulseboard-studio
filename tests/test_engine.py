@@ -45,6 +45,15 @@ class EngineTests(unittest.TestCase):
         with self.assertRaises(ProjectInputError):
             analyse_project({"idea": "   "})
 
+    def test_omitted_hours_default_to_eight(self):
+        idea = "Build a focused API workflow for one customer."
+        omitted = analyse_project({"idea": idea})
+        explicit = analyse_project({"idea": idea, "hoursPerWeek": 8})
+
+        self.assertEqual(omitted["score"], explicit["score"])
+        self.assertEqual(omitted["thisWeekPlan"]["availableHours"], 8)
+        self.assertIn("8 hours per week", omitted["summary"])
+
     def test_invalid_numbers_are_clamped(self):
         result = analyse_project(
             {

@@ -202,7 +202,7 @@ def _coerce_payload(payload: dict[str, Any]) -> ProjectBrief:
         idea=idea,
         goal=goal,
         deadline_days=_coerce_int(payload.get("deadlineDays"), default=21, minimum=1, maximum=180),
-        hours_per_week=_coerce_int(payload.get("hoursPerWeek"), default=6, minimum=1, maximum=60),
+        hours_per_week=_coerce_int(payload.get("hoursPerWeek"), default=8, minimum=1, maximum=60),
         confidence=_coerce_int(payload.get("confidence"), default=3, minimum=1, maximum=5),
         scope=scope,
         risk_appetite=risk_appetite,

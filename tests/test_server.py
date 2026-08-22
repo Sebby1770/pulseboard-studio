@@ -62,6 +62,26 @@ class LocalServerTests(unittest.TestCase):
         self.assertEqual(headers["x-content-type-options"], "nosniff")
         self.assertIn("frame-ancestors 'none'", headers["content-security-policy"])
 
+    def test_favicon_is_served(self):
+        status, headers, body = self.request("GET", "/favicon.svg")
+
+        self.assertEqual(status, 200)
+        self.assertIn(b"<svg", body)
+        self.assertEqual(headers["x-content-type-options"], "nosniff")
+
+    def test_non_public_paths_are_not_served(self):
+        for path in (
+            "/pulseboard/engine.py",
+            "/tests/golden-engine.json",
+            "/README.md",
+            "/server.py",
+            "/docs/ARCHITECTURE.md",
+        ):
+            status, _, body = self.request("GET", path)
+            payload = json.loads(body)
+            self.assertEqual(status, 404, path)
+            self.assertEqual(payload["error"], "Not found.")
+
     def test_access_logs_strip_query_strings(self):
         stream = io.StringIO()
 
