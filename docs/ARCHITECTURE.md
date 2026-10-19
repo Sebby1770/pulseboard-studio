@@ -64,7 +64,7 @@ Brief mode is the single-brief console: samples, Plan / Moves / Sensitivity / Ev
 
 Board mode edits up to six cards. **Load sample slate** fills the SaaS dashboard, the learning prototype, and the ambitious platform. **Score slate** uses `/api/slate` when the chip says API and `analyseSlate` otherwise, with the same failure fallback as a single score. Results group into Do, Park, and Kill. **Open** loads that brief into Brief mode and leaves the slate in memory. User text is set with `textContent`.
 
-The journal key is `pulseboard.journal.v1`. A scored brief can be marked shipped, held, or killed. Each entry stores the coerced inputs, `mutedSignals`, the mark, and `savedAt`. The list is capped at 40. The calibration line re-scores every entry with the live engine and reports how many current GO calls were later shipped. Nothing in the journal is uploaded.
+When the local API is up, shipped, held, and killed marks are stored in `~/.pulseboard/studio.sqlite` (override with absolute `PULSEBOARD_DB`). Journal reads return the 40 newest rows. Calibration counts stored verdicts of `GO` whose outcome is `shipped` and does not re-score them. A successful API slate score is logged with `POST /api/slate-log`. If the API is down, the journal stays in `pulseboard.journal.v1`: coerced inputs, `mutedSignals`, the mark, and `savedAt`, capped at 40, and calibration re-scores with the on-device engine. The status chip stays `on-device`. Nothing in the journal is uploaded.
 
 Print hides the form chrome and keeps the call, the reason, the three moves, and the kill criteria. The Markdown memo adds `**Slate rank:** #N · do|park|kill · Nh` when the open brief's idea and goal match the last slate.
 

@@ -1,4 +1,6 @@
+import json
 import unittest
+from pathlib import Path
 
 from pulseboard import ProjectInputError, analyse_project, analyse_slate
 
@@ -406,6 +408,19 @@ class Engine91Tests(unittest.TestCase):
         self.assertEqual(omitted["metrics"], explicit["metrics"])
         self.assertEqual(omitted["verdict"], explicit["verdict"])
         self.assertEqual(omitted["goNoGo"]["decision"], explicit["goNoGo"]["decision"])
+
+    def test_muted_signal_score_matches_v91_oracle(self):
+        oracle = json.loads(Path(__file__).with_name("golden-v91.json").read_text(encoding="utf-8"))
+        mute = oracle["mute"]
+        result = analyse_project(mute["payload"])
+
+        self.assertEqual(result["score"], mute["score"])
+        self.assertEqual(result["verdict"], mute["verdict"])
+        self.assertEqual(result["goNoGo"]["decision"], mute["decision"])
+        self.assertEqual(result["metrics"], mute["metrics"])
+        self.assertEqual(result["signals"], mute["signals"])
+        self.assertEqual(result["assumptions"], mute["assumptions"])
+        self.assertEqual(result["modelVersion"], "9.1")
 
     def test_muting_a_present_signal_changes_the_score_and_records_it(self):
         brief = {

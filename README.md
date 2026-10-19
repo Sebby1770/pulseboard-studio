@@ -8,7 +8,7 @@ Live site: [https://Sebby1770.github.io/pulseboard-studio/](https://Sebby1770.gi
 
 It is inspectable on purpose. Scoring is a heuristic (word counts, allow-listed enums, a 14-word signal set). There is no API key and no model call.
 
-Version 2.0 adds a six-brief board, signal mutes, score assumptions, and a local journal. Engine 9.1 keeps the 9.0 numbers when `mutedSignals` is omitted. See [CHANGELOG.md](CHANGELOG.md) for release history.
+Version 2.1 keeps the journal in a local SQLite file when the API is up, and falls back to the on-device journal when it is not. Version 2.0 adds a six-brief board, signal mutes, score assumptions, and that local journal. Engine 9.1 keeps the 9.0 numbers when `mutedSignals` is omitted. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Dual engine
 
@@ -94,6 +94,8 @@ The response includes a score, likely range, evidence grade, verdict, go/no-go d
 
 `GET /api/slate` returns `{ "name", "status", "modelVersion", "route": "slate" }`. `POST /api/slate` returns the allocation described above.
 
+`GET /api/journal` returns the 40 newest rows from the local SQLite file. `POST /api/journal` stores `{ idea, verdict, score, outcome, model_version }`. `POST /api/journal/<id>/outcome` sets the outcome to shipped, held, or killed. `POST /api/slate-log` stores `{ hours, items }` after a successful API slate score. These routes exist only on the local server.
+
 ## Using the console
 
 After an analysis, **Plan / Moves / Sensitivity / Evidence** keep the full engine output reachable without one long scroll. Click an impact move, scenario, sensitivity row, flip point, or ladder rung to apply that patched brief and re-score. **Undo** (or `Ctrl`/`Cmd`+`Z`) walks the last apply back. `1`–`4` switch tabs.
@@ -106,7 +108,7 @@ Assumption chips under the score ring show what moved the number. A signal chip 
 
 **Brief / Board** in the top bar switches modes without dropping the other view. Board holds up to six cards. **Load sample slate** fills the SaaS dashboard, the learning prototype, and the ambitious platform. **Score slate** calls `api/slate` when the status chip says API, and `analyseSlate` on device otherwise. Results group into Do, Park, and Kill. **Open** loads that brief back into the single-brief console.
 
-**Mark shipped / Mark held / Mark killed** append a local journal entry at `pulseboard.journal.v1` (40 entries max). The calibration line re-scores those briefs with the live engine and reads like `2 of 3 GO calls were later shipped`. The journal is not sent to the server.
+**Mark shipped / Mark held / Mark killed** record the call. When the local API is up, the journal lives in `~/.pulseboard/studio.sqlite` (`PULSEBOARD_DB` can point at another absolute path). The calibration line counts stored GO rows that were later shipped (`2 of 3 GO calls were later shipped`) and does not re-score them. If the API is down, entries stay in `localStorage` at `pulseboard.journal.v1` (40 entries max), calibration re-scores those briefs with the on-device engine, and the status chip stays `Engine 9.1 · on-device`. The journal is not sent off the machine.
 
 Print hides the form chrome and keeps the call, the reason, the three moves, and the kill criteria. The Markdown memo still exports, and it adds a slate rank line when the open brief was on the last slate.
 

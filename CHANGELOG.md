@@ -4,6 +4,19 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [2.1.0] - 2026-10-20
+
+### Added
+
+- Local SQLite journal and slate log at `~/.pulseboard/studio.sqlite` when the 127.0.0.1 API is up. `PULSEBOARD_DB` overrides that path with an absolute file.
+- `GET /api/journal`, `POST /api/journal`, `POST /api/journal/<id>/outcome`, and `POST /api/slate-log`.
+- API calibration counts stored `GO` calls whose outcome is `shipped`, without re-scoring those rows.
+
+### Changed
+
+- Application version `2.1.0`. Scoring model stays `9.1`.
+- When the API is down, the journal stays in `localStorage` (`pulseboard.journal.v1`) and the engine chip stays `on-device`.
+
 ## [2.0.0] - 2026-10-19
 
 ### Added

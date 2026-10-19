@@ -1358,9 +1358,77 @@ function isJournalEntry(entry) {
   );
 }
 
-function storeJournalMark(mark) {
+function journalLabels(mark) {
+  return { shipped: "Marked shipped", held: "Marked held", killed: "Marked killed" }[mark];
+}
+
+function showCalibration(shipped, goCalls, hasRows) {
+  if (!calibrationStrip) return;
+  if (!hasRows) {
+    calibrationStrip.hidden = true;
+    calibrationStrip.textContent = "";
+    return;
+  }
+  calibrationStrip.hidden = false;
+  calibrationStrip.textContent = `${shipped} of ${goCalls} GO calls were later shipped`;
+}
+
+function renderLocalCalibration() {
+  const entries = loadJournal();
+  if (!entries.length) {
+    showCalibration(0, 0, false);
+    return;
+  }
+  let goCalls = 0;
+  let shipped = 0;
+  for (const entry of entries) {
+    try {
+      const scored = analyseProject(entry);
+      if (scored.goNoGo?.decision !== "GO") continue;
+      goCalls += 1;
+      if (entry.mark === "shipped") shipped += 1;
+    } catch {
+      // Skip briefs the live engine cannot score.
+    }
+  }
+  showCalibration(shipped, goCalls, true);
+}
+
+function renderApiCalibration(items) {
+  let goCalls = 0;
+  let shipped = 0;
+  for (const item of items) {
+    if (!item || item.verdict !== "GO") continue;
+    goCalls += 1;
+    if (item.outcome === "shipped") shipped += 1;
+  }
+  showCalibration(shipped, goCalls, items.length > 0);
+}
+
+async function storeJournalMark(mark) {
   if (!lastAnalysis) return;
   const payload = normalizePayload(lastAnalysis.payload);
+  if (engineMode === "api") {
+    try {
+      const response = await fetch(apiUrl("api/journal"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          idea: payload.idea,
+          verdict: lastAnalysis.result?.goNoGo?.decision,
+          score: lastAnalysis.result?.score,
+          outcome: mark,
+          model_version: lastAnalysis.result?.modelVersion || MODEL_VERSION,
+        }),
+      });
+      if (!response.ok) throw new Error("journal failed");
+      await renderCalibration();
+      showToast(journalLabels(mark));
+      return;
+    } catch {
+      // Keep the local journal when the API post fails. Do not change the engine chip.
+    }
+  }
   const entry = {
     idea: payload.idea,
     goal: payload.goal,
@@ -1376,33 +1444,27 @@ function storeJournalMark(mark) {
   };
   const next = [entry, ...loadJournal()].slice(0, JOURNAL_LIMIT);
   localStorage.setItem(JOURNAL_KEY, JSON.stringify(next));
-  renderCalibration();
-  const labels = { shipped: "Marked shipped", held: "Marked held", killed: "Marked killed" };
-  showToast(labels[mark]);
+  renderLocalCalibration();
+  showToast(journalLabels(mark));
 }
 
-function renderCalibration() {
+async function renderCalibration() {
   if (!calibrationStrip) return;
-  const entries = loadJournal();
-  if (!entries.length) {
-    calibrationStrip.hidden = true;
-    calibrationStrip.textContent = "";
-    return;
-  }
-  let goCalls = 0;
-  let shipped = 0;
-  for (const entry of entries) {
+  if (engineMode === "api") {
     try {
-      const scored = analyseProject(entry);
-      if (scored.goNoGo?.decision !== "GO") continue;
-      goCalls += 1;
-      if (entry.mark === "shipped") shipped += 1;
+      const response = await fetch(apiUrl("api/journal"), {
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("journal failed");
+      const body = await response.json();
+      if (!Array.isArray(body.items)) throw new Error("journal failed");
+      renderApiCalibration(body.items);
+      return;
     } catch {
-      // Skip briefs the live engine cannot score.
+      // Keep the local journal when the API list cannot be read.
     }
   }
-  calibrationStrip.hidden = false;
-  calibrationStrip.textContent = `${shipped} of ${goCalls} GO calls were later shipped`;
+  renderLocalCalibration();
 }
 
 function setMode(mode) {
@@ -1652,6 +1714,7 @@ async function runSlate() {
     const slate = await scoreSlateRequest(payload);
     lastSlate = slate;
     renderBoardResults(slate);
+    if (engineMode === "api" && !usedOnDevice) postSlateLog(slate);
     setStatus(engineStatusLabel(), "ok");
   } catch (error) {
     const message = error.message || "Scoring failed.";
@@ -1659,6 +1722,21 @@ async function runSlate() {
     setStatus(engineStatusLabel(), "ok");
   } finally {
     if (scoreSlateButton) scoreSlateButton.disabled = boardBriefs.length === 0;
+  }
+}
+
+function postSlateLog(slate) {
+  try {
+    const hours = slate?.hoursPerWeek;
+    const items = slate?.items;
+    if (!Number.isFinite(hours) || !Array.isArray(items)) return;
+    fetch(apiUrl("api/slate-log"), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ hours, items }),
+    }).catch(() => {});
+  } catch {
+    // Ignore slate-log failure.
   }
 }
 
@@ -1688,6 +1766,7 @@ renderHistory();
 renderCalibration();
 renderBoardEditor();
 checkApi().then(() => {
+  renderCalibration();
   if (!sharedBrief) return;
   applyAndAnalyze(sharedBrief, "Shared brief loaded");
 });

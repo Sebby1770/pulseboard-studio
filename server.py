@@ -4,17 +4,27 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import re
+import sqlite3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
 from pulseboard import MODEL_VERSION, ProjectInputError, analyse_project, analyse_slate
+from pulseboard.store import (
+    StoreError,
+    create_journal,
+    list_journal,
+    log_slate,
+    update_journal_outcome,
+)
 
 ROOT = Path(__file__).resolve().parent
 SCORE_MAX_BODY_BYTES = 16_384
 SLATE_MAX_BODY_BYTES = 65_536
 PUBLIC_ROOT_FILES = {"index.html", "favicon.svg"}
+_JOURNAL_OUTCOME = re.compile(r"^/api/journal/([^/]+)/outcome$")
 
 
 class PulseBoardHandler(BaseHTTPRequestHandler):
@@ -40,10 +50,16 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
                 }
             )
             return
+        if parsed.path == "/api/journal":
+            self._read_journal()
+            return
         self._serve_static(parsed.path)
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
+        if parsed.path in {"/api/journal", "/api/slate-log"} or _JOURNAL_OUTCOME.match(parsed.path):
+            self._post_store(parsed.path)
+            return
         if parsed.path not in {"/api/score", "/api/slate"}:
             self._send_json({"error": "Unknown API route."}, status=404)
             return
@@ -67,6 +83,53 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
             return
         except ValueError as exc:
             self._send_json({"error": str(exc)}, status=413)
+            return
+
+        self._send_json(result)
+
+    def _read_journal(self) -> None:
+        try:
+            self._send_json({"items": list_journal()})
+        except StoreError as exc:
+            self._send_json({"error": str(exc)}, status=400)
+        except sqlite3.Error:
+            self._send_json({"error": "Journal store failed."}, status=500)
+
+    def _post_store(self, path: str) -> None:
+        if not self._accepts_json():
+            self._send_json({"error": "Content-Type must be application/json."}, status=415)
+            return
+
+        try:
+            limit = SLATE_MAX_BODY_BYTES if path == "/api/slate-log" else SCORE_MAX_BODY_BYTES
+            payload = self._read_json(limit)
+            if path == "/api/journal":
+                result = create_journal(payload)
+            elif path == "/api/slate-log":
+                result = log_slate(payload)
+            else:
+                match = _JOURNAL_OUTCOME.match(path)
+                if match is None:
+                    self._send_json({"error": "Unknown API route."}, status=404)
+                    return
+                result = update_journal_outcome(match.group(1), payload)
+                if result is None:
+                    self._send_json({"error": "Journal entry not found."}, status=404)
+                    return
+        except StoreError as exc:
+            self._send_json({"error": str(exc)}, status=400)
+            return
+        except ProjectInputError as exc:
+            self._send_json({"error": str(exc)}, status=400)
+            return
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            self._send_json({"error": "Request body must be valid JSON."}, status=400)
+            return
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, status=413)
+            return
+        except sqlite3.Error:
+            self._send_json({"error": "Journal store failed."}, status=500)
             return
 
         self._send_json(result)
