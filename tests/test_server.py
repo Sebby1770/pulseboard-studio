@@ -37,7 +37,7 @@ class LocalServerTests(unittest.TestCase):
         payload = json.loads(body)
 
         self.assertEqual(status, 200)
-        self.assertEqual(payload["modelVersion"], "9.0")
+        self.assertEqual(payload["modelVersion"], "9.1")
         self.assertEqual(headers["cache-control"], "no-store")
 
     def test_post_requires_json_content_type(self):
@@ -91,6 +91,77 @@ class LocalServerTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn("GET / HTTP", stream.getvalue())
         self.assertNotIn("private-secret", stream.getvalue())
+
+    def test_slate_health_and_allocation(self):
+        status, _, body = self.request("GET", "/api/slate")
+        payload = json.loads(body)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["modelVersion"], "9.1")
+        self.assertEqual(payload["route"], "slate")
+
+        score_body = json.dumps(
+            {
+                "hoursPerWeek": 8,
+                "briefs": [
+                    {
+                        "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+                        "goal": "Ship a prototype for one SaaS workflow.",
+                        "deadlineDays": 21,
+                        "hoursPerWeek": 8,
+                        "confidence": 4,
+                        "scope": "focused",
+                        "riskAppetite": "medium",
+                        "evidence": "signals",
+                    }
+                ],
+            }
+        ).encode("utf-8")
+        status, _, body = self.request(
+            "POST",
+            "/api/slate",
+            body=score_body,
+            headers={"content-type": "application/json"},
+        )
+        slate = json.loads(body)
+
+        self.assertEqual(status, 200)
+        self.assertEqual(slate["totalAssigned"], 8)
+        self.assertEqual(slate["items"][0]["label"], "do")
+        self.assertEqual(slate["items"][0]["hours"], 8)
+
+    def test_score_body_limit_stays_small_and_slate_allows_more(self):
+        oversized = json.dumps(
+            {"idea": "Build a dashboard.", "padding": "x" * 20000}
+        ).encode("utf-8")
+        status, _, body = self.request(
+            "POST",
+            "/api/score",
+            body=oversized,
+            headers={"content-type": "application/json"},
+        )
+        self.assertEqual(status, 413)
+        self.assertEqual(json.loads(body)["error"], "Request body is too large.")
+
+        slate_body = json.dumps(
+            {
+                "hoursPerWeek": 8,
+                "padding": "y" * 20000,
+                "briefs": [
+                    {"idea": "Build a focused API dashboard for one customer workflow."}
+                ],
+            }
+        ).encode("utf-8")
+        self.assertGreater(len(slate_body), 16384)
+        self.assertLess(len(slate_body), 65536)
+        status, _, body = self.request(
+            "POST",
+            "/api/slate",
+            body=slate_body,
+            headers={"content-type": "application/json"},
+        )
+        self.assertEqual(status, 200, body)
+        self.assertIn("items", json.loads(body))
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ import {
   serializeDraft,
   titleCase,
 } from "./core.js";
-import { MODEL_VERSION, ProjectInputError, analyseProject } from "./engine.js";
+import { MODEL_VERSION, ProjectInputError, analyseProject, analyseSlate } from "./engine.js";
 
 const form = document.querySelector("#projectForm");
 const apiStatus = document.querySelector("#apiStatus");
@@ -92,6 +92,21 @@ const scoreMixBars = document.querySelector("#scoreMixBars");
 const historySpark = document.querySelector("#historySpark");
 const toast = document.querySelector("#toast");
 const primaryAction = form.querySelector(".primary-action");
+const assumptionRow = document.querySelector("#assumptionRow");
+const journalActions = document.querySelector("#journalActions");
+const calibrationStrip = document.querySelector("#calibrationStrip");
+const workspace = document.querySelector(".workspace");
+const boardPanel = document.querySelector("#boardPanel");
+const boardCards = document.querySelector("#boardCards");
+const boardEmpty = document.querySelector("#boardEmpty");
+const boardResults = document.querySelector("#boardResults");
+const boardAssigned = document.querySelector("#boardAssigned");
+const boardError = document.querySelector("#boardError");
+const scoreSlateButton = document.querySelector("#scoreSlateButton");
+const addBriefButton = document.querySelector("#addBriefButton");
+const slateHoursInput = document.querySelector("#slateHours");
+const modeBrief = document.querySelector("#modeBrief");
+const modeBoard = document.querySelector("#modeBoard");
 
 const HISTORY_KEY = "pulseboard.history.v2";
 const LEGACY_HISTORY_KEY = "pulseboard.history.v1";
@@ -99,6 +114,8 @@ const DRAFT_KEY = "pulseboard.draft.v1";
 const BASELINE_KEY = "pulseboard.baseline.v1";
 const THEME_KEY = "pulseboard.theme.v1";
 const TAB_KEY = "pulseboard.tab.v1";
+const JOURNAL_KEY = "pulseboard.journal.v1";
+const JOURNAL_LIMIT = 40;
 const TABS = ["plan", "moves", "sensitivity", "evidence"];
 const EVIDENCE_ORDER = ["idea", "signals", "users"];
 const SCORE_WEIGHTS = {
@@ -158,6 +175,9 @@ let toastTimer = null;
 let engineMode = "on-device";
 let usedOnDevice = false;
 let scoring = false;
+let activeMutedSignals = [];
+let boardBriefs = [];
+let lastSlate = null;
 const undoStack = [];
 
 function apiUrl(path = "api/score") {
@@ -180,16 +200,24 @@ function formPayload() {
     scope: data.get("scope"),
     riskAppetite: data.get("riskAppetite"),
     evidence: data.get("evidence"),
+    mutedSignals: activeMutedSignals,
   });
 }
 
-async function scoreProject(payload) {
+function engineIsApi() {
+  return engineMode === "api" && !usedOnDevice;
+}
+
+async function scoreWith(path, payload, onDevice, { requireApiChip = false } = {}) {
+  if (requireApiChip && !engineIsApi()) {
+    return onDevice(payload);
+  }
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 8000);
   try {
     let response;
     try {
-      response = await fetch(apiUrl(), {
+      response = await fetch(apiUrl(path), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -197,7 +225,7 @@ async function scoreProject(payload) {
       });
     } catch {
       usedOnDevice = true;
-      return analyseProject(payload);
+      return onDevice(payload);
     }
 
     const raw = await response.text();
@@ -207,7 +235,7 @@ async function scoreProject(payload) {
     } catch {
       if (!response.ok) {
         usedOnDevice = true;
-        return analyseProject(payload);
+        return onDevice(payload);
       }
       throw new Error("Scoring API did not return JSON.");
     }
@@ -217,7 +245,7 @@ async function scoreProject(payload) {
     }
     if (!response.ok) {
       usedOnDevice = true;
-      return analyseProject(payload);
+      return onDevice(payload);
     }
     usedOnDevice = false;
     engineMode = "api";
@@ -225,6 +253,14 @@ async function scoreProject(payload) {
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+async function scoreProject(payload) {
+  return scoreWith("api/score", payload, analyseProject);
+}
+
+async function scoreSlateRequest(payload) {
+  return scoreWith("api/slate", payload, analyseSlate, { requireApiChip: true });
 }
 
 async function checkApi() {
@@ -285,6 +321,8 @@ function renderResult(result) {
       return chip;
     }),
   );
+  renderAssumptions(result.assumptions || []);
+  if (journalActions) journalActions.hidden = false;
 
   metricGrid.replaceChildren(
     ...Object.entries(result.metrics).map(([name, value]) => {
@@ -808,6 +846,7 @@ function applyPayload(payload) {
   form.querySelector(`[name="scope"][value="${normalized.scope}"]`).checked = true;
   form.querySelector(`[name="riskAppetite"][value="${normalized.riskAppetite}"]`).checked = true;
   form.querySelector(`[name="evidence"][value="${normalized.evidence}"]`).checked = true;
+  activeMutedSignals = normalized.mutedSignals;
 }
 
 function patchFromMove(payload, moveId) {
@@ -1009,6 +1048,10 @@ clearButton.addEventListener("click", () => {
   scoreRange.hidden = true;
   scoreRing.style.setProperty("--score", 0);
   signalRow.replaceChildren();
+  assumptionRow?.replaceChildren();
+  if (assumptionRow) assumptionRow.hidden = true;
+  if (journalActions) journalActions.hidden = true;
+  activeMutedSignals = [];
   timeline.replaceChildren();
   questions.replaceChildren();
   impactList.replaceChildren();
@@ -1070,9 +1113,7 @@ form.addEventListener("change", scheduleDraftSave);
 copyMemoButton.addEventListener("click", async () => {
   if (!lastAnalysis) return;
   try {
-    await navigator.clipboard.writeText(
-      buildMemo(lastAnalysis.payload, lastAnalysis.result, lastAnalysis.comparison),
-    );
+    await navigator.clipboard.writeText(decisionMemo());
     setStatus("Memo copied", "ok");
     showToast("Memo copied");
   } catch {
@@ -1082,12 +1123,9 @@ copyMemoButton.addEventListener("click", async () => {
 
 downloadMemoButton.addEventListener("click", () => {
   if (!lastAnalysis) return;
-  const blob = new Blob(
-    [buildMemo(lastAnalysis.payload, lastAnalysis.result, lastAnalysis.comparison)],
-    {
-      type: "text/markdown;charset=utf-8",
-    },
-  );
+  const blob = new Blob([decisionMemo()], {
+    type: "text/markdown;charset=utf-8",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -1231,12 +1269,424 @@ function isTypingField(target) {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable;
 }
 
+function renderAssumptions(assumptions) {
+  if (!assumptionRow) return;
+  if (!assumptions.length) {
+    assumptionRow.replaceChildren();
+    assumptionRow.hidden = true;
+    return;
+  }
+  assumptionRow.hidden = false;
+  assumptionRow.replaceChildren(
+    ...assumptions.map((item) => {
+      const isSignal = String(item.id || "").startsWith("signal_");
+      if (!isSignal) {
+        const chip = document.createElement("span");
+        chip.className = `assumption-chip direction-${item.direction}`;
+        chip.textContent = assumptionText(item);
+        return chip;
+      }
+      const word = item.source || item.label;
+      const pressed = item.direction === "muted";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `assumption-chip direction-${item.direction}`;
+      button.setAttribute("aria-pressed", pressed ? "true" : "false");
+      button.setAttribute("aria-label", pressed ? `Unmute ${word}` : `Mute ${word}`);
+      button.textContent = word;
+      button.addEventListener("click", () => toggleMutedSignal(word));
+      return button;
+    }),
+  );
+}
+
+function assumptionText(item) {
+  const mark = item.direction === "up" ? "↑" : item.direction === "down" ? "↓" : "muted";
+  const source = item.source ? ` ${item.source}` : "";
+  return `${item.label}${source} ${mark}`;
+}
+
+function toggleMutedSignal(word) {
+  if (!word || scoring) return;
+  const current = normalizePayload(lastAnalysis?.payload || formPayload());
+  const muted = new Set(current.mutedSignals);
+  const turningOn = !muted.has(word);
+  if (turningOn) muted.add(word);
+  else muted.delete(word);
+  applyAndAnalyze(
+    { ...current, mutedSignals: [...muted].sort() },
+    turningOn ? "Signal muted" : "Signal restored",
+  );
+}
+
+function currentSlateRank(payload) {
+  if (!lastSlate || !payload) return null;
+  const normalized = normalizePayload(payload);
+  const match = lastSlate.items?.find((item) => {
+    const brief = item.brief || {};
+    return brief.idea === normalized.idea && brief.goal === normalized.goal;
+  });
+  if (!match) return null;
+  return { rank: match.rank, label: match.label, hours: match.hours };
+}
+
+function decisionMemo() {
+  return buildMemo(
+    lastAnalysis.payload,
+    lastAnalysis.result,
+    lastAnalysis.comparison,
+    currentSlateRank(lastAnalysis.payload),
+  );
+}
+
+function loadJournal() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(JOURNAL_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isJournalEntry).slice(0, JOURNAL_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+function isJournalEntry(entry) {
+  return Boolean(
+    entry &&
+      typeof entry === "object" &&
+      typeof entry.idea === "string" &&
+      ["shipped", "held", "killed"].includes(entry.mark),
+  );
+}
+
+function storeJournalMark(mark) {
+  if (!lastAnalysis) return;
+  const payload = normalizePayload(lastAnalysis.payload);
+  const entry = {
+    idea: payload.idea,
+    goal: payload.goal,
+    deadlineDays: payload.deadlineDays,
+    hoursPerWeek: payload.hoursPerWeek,
+    confidence: payload.confidence,
+    scope: payload.scope,
+    riskAppetite: payload.riskAppetite,
+    evidence: payload.evidence,
+    mutedSignals: payload.mutedSignals,
+    mark,
+    savedAt: new Date().toISOString(),
+  };
+  const next = [entry, ...loadJournal()].slice(0, JOURNAL_LIMIT);
+  localStorage.setItem(JOURNAL_KEY, JSON.stringify(next));
+  renderCalibration();
+  const labels = { shipped: "Marked shipped", held: "Marked held", killed: "Marked killed" };
+  showToast(labels[mark]);
+}
+
+function renderCalibration() {
+  if (!calibrationStrip) return;
+  const entries = loadJournal();
+  if (!entries.length) {
+    calibrationStrip.hidden = true;
+    calibrationStrip.textContent = "";
+    return;
+  }
+  let goCalls = 0;
+  let shipped = 0;
+  for (const entry of entries) {
+    try {
+      const scored = analyseProject(entry);
+      if (scored.goNoGo?.decision !== "GO") continue;
+      goCalls += 1;
+      if (entry.mark === "shipped") shipped += 1;
+    } catch {
+      // Skip briefs the live engine cannot score.
+    }
+  }
+  calibrationStrip.hidden = false;
+  calibrationStrip.textContent = `${shipped} of ${goCalls} GO calls were later shipped`;
+}
+
+function setMode(mode) {
+  const board = mode === "board";
+  document.body.dataset.mode = board ? "board" : "brief";
+  if (workspace) workspace.hidden = board;
+  if (boardPanel) boardPanel.hidden = !board;
+  modeBrief?.setAttribute("aria-pressed", board ? "false" : "true");
+  modeBoard?.setAttribute("aria-pressed", board ? "true" : "false");
+}
+
+function blankBrief() {
+  return {
+    idea: "",
+    goal: "",
+    deadlineDays: 21,
+    hoursPerWeek: 8,
+    confidence: 3,
+    scope: "focused",
+    riskAppetite: "medium",
+    evidence: "idea",
+    mutedSignals: [],
+  };
+}
+
+function setBoardError(message) {
+  if (!boardError) return;
+  boardError.textContent = message;
+  boardError.hidden = !message;
+}
+
+function loadSampleSlate() {
+  boardBriefs = ["saas", "learn", "platform"].map((key) => ({ ...SAMPLE_BRIEFS[key] }));
+  renderBoardEditor();
+  setBoardError("");
+}
+
+function renderBoardEditor() {
+  if (!boardCards) return;
+  if (boardEmpty) boardEmpty.hidden = boardBriefs.length > 0;
+  if (scoreSlateButton) scoreSlateButton.disabled = boardBriefs.length === 0;
+  if (addBriefButton) addBriefButton.disabled = boardBriefs.length >= 6;
+  boardCards.replaceChildren(
+    ...boardBriefs.map((brief, index) => {
+      const card = document.createElement("article");
+      card.className = "board-card";
+      const bar = document.createElement("div");
+      bar.className = "board-card-bar";
+      const heading = document.createElement("strong");
+      heading.textContent = `Brief ${index + 1}`;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "Remove";
+      remove.addEventListener("click", () => {
+        boardBriefs.splice(index, 1);
+        renderBoardEditor();
+      });
+      bar.append(heading, remove);
+
+      const ideaLabel = document.createElement("label");
+      ideaLabel.textContent = "Idea";
+      const idea = document.createElement("textarea");
+      idea.maxLength = 320;
+      idea.rows = 3;
+      idea.value = brief.idea || "";
+      idea.setAttribute("aria-label", `Brief ${index + 1} idea`);
+      idea.addEventListener("input", () => {
+        boardBriefs[index].idea = idea.value;
+      });
+      ideaLabel.append(idea);
+
+      const goalLabel = document.createElement("label");
+      goalLabel.textContent = "Goal";
+      const goal = document.createElement("input");
+      goal.type = "text";
+      goal.maxLength = 220;
+      goal.value = brief.goal || "";
+      goal.setAttribute("aria-label", `Brief ${index + 1} goal`);
+      goal.addEventListener("input", () => {
+        boardBriefs[index].goal = goal.value;
+      });
+      goalLabel.append(goal);
+
+      const fields = document.createElement("div");
+      fields.className = "board-fields";
+      fields.append(
+        numberControl("Deadline", brief.deadlineDays, 1, 180, (value) => {
+          boardBriefs[index].deadlineDays = value;
+        }),
+        numberControl("Hours/week", brief.hoursPerWeek, 1, 60, (value) => {
+          boardBriefs[index].hoursPerWeek = value;
+        }),
+        numberControl("Confidence", brief.confidence, 1, 5, (value) => {
+          boardBriefs[index].confidence = value;
+        }),
+        selectControl(
+          "Scope",
+          brief.scope,
+          [
+            ["tiny", "Tiny"],
+            ["focused", "Focused"],
+            ["ambitious", "Ambitious"],
+          ],
+          (value) => {
+            boardBriefs[index].scope = value;
+          },
+        ),
+        selectControl(
+          "Evidence",
+          brief.evidence,
+          [
+            ["idea", "Idea only"],
+            ["signals", "Signals"],
+            ["users", "User proof"],
+          ],
+          (value) => {
+            boardBriefs[index].evidence = value;
+          },
+        ),
+        selectControl(
+          "Risk",
+          brief.riskAppetite,
+          [
+            ["low", "Cautious"],
+            ["medium", "Balanced"],
+            ["high", "Bold"],
+          ],
+          (value) => {
+            boardBriefs[index].riskAppetite = value;
+          },
+        ),
+      );
+      card.append(bar, ideaLabel, goalLabel, fields);
+      return card;
+    }),
+  );
+}
+
+function numberControl(labelText, value, min, max, onChange) {
+  const label = document.createElement("label");
+  const caption = document.createElement("span");
+  caption.textContent = labelText;
+  const input = document.createElement("input");
+  input.type = "number";
+  input.min = String(min);
+  input.max = String(max);
+  input.value = value ?? "";
+  input.addEventListener("input", () => onChange(input.value));
+  label.append(caption, input);
+  return label;
+}
+
+function selectControl(labelText, value, options, onChange) {
+  const label = document.createElement("label");
+  const caption = document.createElement("span");
+  caption.textContent = labelText;
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", labelText);
+  for (const [optionValue, optionLabel] of options) {
+    const option = document.createElement("option");
+    option.value = optionValue;
+    option.textContent = optionLabel;
+    if (optionValue === value) option.selected = true;
+    select.append(option);
+  }
+  select.addEventListener("change", () => onChange(select.value));
+  label.append(caption, select);
+  return label;
+}
+
+function renderBoardResults(slate) {
+  if (!boardResults) return;
+  boardResults.hidden = false;
+  if (boardAssigned) {
+    boardAssigned.hidden = false;
+    boardAssigned.textContent = `${slate.totalAssigned} of ${slate.hoursPerWeek} hours assigned`;
+  }
+  const groups = [
+    ["do", "Do"],
+    ["park", "Park"],
+    ["kill", "Kill"],
+  ];
+  boardResults.replaceChildren(
+    ...groups.map(([label, title]) => {
+      const column = document.createElement("section");
+      column.className = "board-column";
+      const heading = document.createElement("h3");
+      heading.textContent = title;
+      const list = document.createElement("div");
+      const items = (slate.items || []).filter((item) => item.label === label);
+      if (!items.length) {
+        const empty = document.createElement("p");
+        empty.className = "board-column-empty";
+        empty.textContent = "None";
+        list.append(empty);
+      } else {
+        for (const item of items) list.append(renderSlateCard(item));
+      }
+      column.append(heading, list);
+      return column;
+    }),
+  );
+}
+
+function renderSlateCard(item) {
+  const card = document.createElement("article");
+  card.className = "slate-card";
+  const idea = document.createElement("p");
+  idea.textContent = item.brief?.idea || "";
+  const meta = document.createElement("div");
+  meta.className = "slate-meta";
+  const score = document.createElement("strong");
+  score.textContent = String(item.result?.score ?? "");
+  const decision = document.createElement("span");
+  decision.textContent = item.result?.goNoGo?.decision || "";
+  const hours = document.createElement("span");
+  hours.textContent = `${item.hours}h`;
+  meta.append(score, decision, hours);
+  const open = document.createElement("button");
+  open.type = "button";
+  open.textContent = "Open";
+  open.addEventListener("click", () => {
+    setMode("brief");
+    applyAndAnalyze(item.brief, "Opened slate brief");
+  });
+  card.append(idea, meta, open);
+  return card;
+}
+
+async function runSlate() {
+  if (!boardBriefs.length || boardBriefs.length > 6) {
+    setBoardError("Provide between 1 and 6 briefs.");
+    return;
+  }
+  if (boardBriefs.some((brief) => !String(brief.idea || "").trim())) {
+    setBoardError("Every brief needs an idea before scoring.");
+    return;
+  }
+  const payload = {
+    hoursPerWeek: Number(slateHoursInput?.value),
+    briefs: boardBriefs.map((brief) => normalizePayload(brief)),
+  };
+  setBoardError("");
+  setStatus("Scoring slate", "busy");
+  if (scoreSlateButton) scoreSlateButton.disabled = true;
+  try {
+    const slate = await scoreSlateRequest(payload);
+    lastSlate = slate;
+    renderBoardResults(slate);
+    setStatus(engineStatusLabel(), "ok");
+  } catch (error) {
+    const message = error.message || "Scoring failed.";
+    setBoardError(message);
+    setStatus(engineStatusLabel(), "ok");
+  } finally {
+    if (scoreSlateButton) scoreSlateButton.disabled = boardBriefs.length === 0;
+  }
+}
+
+document.querySelector("#markShipped")?.addEventListener("click", () => storeJournalMark("shipped"));
+document.querySelector("#markHeld")?.addEventListener("click", () => storeJournalMark("held"));
+document.querySelector("#markKilled")?.addEventListener("click", () => storeJournalMark("killed"));
+modeBrief?.addEventListener("click", () => setMode("brief"));
+modeBoard?.addEventListener("click", () => setMode("board"));
+scoreSlateButton?.addEventListener("click", () => {
+  runSlate();
+});
+addBriefButton?.addEventListener("click", () => {
+  if (boardBriefs.length >= 6) return;
+  boardBriefs.push(blankBrief());
+  renderBoardEditor();
+});
+for (const button of document.querySelectorAll("[data-load-sample-slate]")) {
+  button.addEventListener("click", loadSampleSlate);
+}
+
 initTheme();
 const storedTab = localStorage.getItem(TAB_KEY);
 selectTab(TABS.includes(storedTab) ? storedTab : "plan");
 const sharedBrief = restoreSharedScenario();
 if (!sharedBrief) restoreDraft();
 renderHistory();
+renderCalibration();
+renderBoardEditor();
 checkApi().then(() => {
   if (!sharedBrief) return;
   applyAndAnalyze(sharedBrief, "Shared brief loaded");

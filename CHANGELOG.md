@@ -4,6 +4,25 @@ All notable changes to PulseBoard Studio are documented here.
 
 The project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and uses semantic versioning.
 
+## [2.0.0] - 2026-10-19
+
+### Added
+
+- Engine 9.1 `assumptions`: idea words, goal words, each detected signal, each muted hit, and the controls that differ from the neutral baseline.
+- Optional `mutedSignals`. Omitting them, or sending `[]`, keeps the engine 9.0 numeric score, metrics, verdict, and go/no-go decision.
+- `analyse_slate` / `POST /api/slate` ranks 1–6 briefs and assigns a weekly hour pool into do, park, and kill.
+- Board mode with a sample slate, hour pool, and Open-back-to-brief.
+- Signal chips that mute a word and re-score. Undo and share links keep `mutedSignals`.
+- Local journal `pulseboard.journal.v1` (shipped, held, killed, 40 entries) and a calibration line that re-scores with the live engine.
+- Print layout for the call, reason, three moves, and kill criteria.
+- Decision memos include a slate rank line when the open brief was on the last slate.
+
+### Changed
+
+- Application version `2.0.0`. Scoring model `9.1`.
+- Vercel `api/score.py` scores a slate when the path contains `slate`, or when the JSON body has `briefs` and no top-level `idea`.
+- Slate requests accept 65536 bytes. Score requests stay at 16384.
+
 ## [1.3.0] - 2026-08-22
 
 ### Added

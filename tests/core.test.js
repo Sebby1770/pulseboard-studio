@@ -8,6 +8,7 @@ import {
   compareResults,
   createHistoryEntry,
   migrateHistory,
+  normalizeMuted,
   normalizePayload,
   parseBaseline,
   parseDraft,
@@ -26,6 +27,7 @@ const payload = {
   scope: "focused",
   riskAppetite: "medium",
   evidence: "signals",
+  mutedSignals: [],
 };
 
 const result = {
@@ -298,6 +300,33 @@ test("shared inputs are allow-listed, clamped, and stripped of null bytes", () =
   assert.equal(parsed.evidence, "idea");
   assert.equal(parseShareUrl("https://example.com/studio?idea="), null);
   assert.equal(parseShareUrl("javascript:alert(1)"), null);
+});
+
+test("muted signals round-trip through drafts, shares, and the allow-list", () => {
+  const mutedPayload = { ...payload, mutedSignals: ["ship", "api", "nope", "API"] };
+  const normalized = normalizePayload(mutedPayload);
+
+  assert.deepEqual(normalized.mutedSignals, ["api", "ship"]);
+  assert.deepEqual(parseDraft(serializeDraft(mutedPayload)), normalized);
+
+  const shared = parseShareUrl(buildShareUrl(mutedPayload, "https://example.com/studio"));
+  assert.deepEqual(shared.mutedSignals, ["api", "ship"]);
+
+  const jsonUrl = new URL("https://example.com/studio");
+  jsonUrl.hash = new URLSearchParams({
+    idea: payload.idea,
+    mutedSignals: '["workflow","metadata","ship"]',
+  }).toString();
+  assert.deepEqual(parseShareUrl(jsonUrl).mutedSignals, ["ship", "workflow"]);
+  assert.deepEqual(normalizeMuted("not-a-signal"), []);
+  assert.deepEqual(normalizeMuted(["customer", 12, "customer"]), ["customer"]);
+});
+
+test("decision memo includes a slate rank when the brief was ranked", () => {
+  const memo = buildMemo(payload, result, null, { rank: 1, label: "do", hours: 8 });
+
+  assert.match(memo, /\*\*Slate rank:\*\* #1 · do · 8h/);
+  assert.doesNotMatch(buildMemo(payload, result), /Slate rank/);
 });
 
 test("baselines store only normalized inputs and comparable metrics", () => {

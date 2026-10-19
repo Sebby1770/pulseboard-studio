@@ -1,6 +1,6 @@
 /** On-device port of pulseboard.engine. Python remains the oracle. */
 
-export const MODEL_VERSION = "9.0";
+export const MODEL_VERSION = "9.1";
 
 export class ProjectInputError extends Error {
   constructor(message) {
@@ -9,7 +9,7 @@ export class ProjectInputError extends Error {
   }
 }
 
-const SIGNAL_WORDS = new Set([
+export const SIGNAL_WORDS = new Set([
   "api",
   "automate",
   "customer",
@@ -67,6 +67,7 @@ export function analyseProject(payload) {
     summary: summaryFor(brief, score),
     evidenceGrade: evidenceGrade(brief.evidence),
     signals: [...signals].sort(),
+    assumptions: assumptionsFor(brief, score),
     metrics,
     recommendedLever: recommendedLever(brief, metrics),
     highestImpactMoves: highestImpactMoves(brief, score),
@@ -89,7 +90,7 @@ export function analyseProject(payload) {
 function scoreBrief(brief) {
   const ideaWords = wordCount(brief.idea);
   const goalWords = wordCount(brief.goal);
-  const signals = signalHits(`${brief.idea} ${brief.goal}`);
+  const [signals] = partitionSignals(brief);
 
   const evidence = EVIDENCE_SCORES[brief.evidence];
   const clarity = clamp(
@@ -194,6 +195,7 @@ function coercePayload(payload) {
     scope,
     risk_appetite: riskAppetite,
     evidence,
+    muted_signals: coerceMuted(payload.mutedSignals),
   };
 }
 
@@ -229,6 +231,162 @@ function signalHits(text) {
     if (tokens.has(word)) hits.add(word);
   }
   return hits;
+}
+
+function coerceMuted(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  for (const item of value) {
+    if (typeof item !== "string") continue;
+    const token = item.trim().toLowerCase();
+    if (SIGNAL_WORDS.has(token)) seen.add(token);
+  }
+  return [...seen].sort();
+}
+
+function partitionSignals(brief) {
+  const raw = signalHits(`${brief.idea} ${brief.goal}`);
+  const mutedWords = new Set(brief.muted_signals || []);
+  const active = new Set();
+  const muted = new Set();
+  for (const word of raw) {
+    if (mutedWords.has(word)) muted.add(word);
+    else active.add(word);
+  }
+  return [active, muted];
+}
+
+function assumptionsFor(brief, score) {
+  const ideaWords = wordCount(brief.idea);
+  const goalWords = wordCount(brief.goal);
+  const [active, muted] = partitionSignals(brief);
+  const rows = [];
+  if (ideaWords > 0) {
+    rows.push(assumption("idea_words", "Idea words", "clarity", "up", String(ideaWords)));
+  }
+  if (goalWords > 0) {
+    rows.push(assumption("goal_words", "Goal words", "clarity", "up", String(goalWords)));
+  }
+  for (const word of [...active].sort()) {
+    rows.push(assumption(`signal_${word}`, word, "clarity", "up", word));
+  }
+  for (const word of [...muted].sort()) {
+    rows.push(assumption(`signal_${word}`, word, "clarity", "muted", word));
+  }
+  const controls = [
+    ["confidence", "Confidence", "momentum", "confidence", 3],
+    ["hours", "Hours per week", "momentum", "hours_per_week", 8],
+    ["deadline", "Deadline", "risk", "deadline_days", 21],
+    ["scope", "Scope", "feasibility", "scope", "focused"],
+    ["evidence", "Evidence", "evidence", "evidence", "idea"],
+    ["risk_appetite", "Risk appetite", "risk", "risk_appetite", "medium"],
+  ];
+  for (const [id, label, metric, field, baseline] of controls) {
+    if (brief[field] === baseline) continue;
+    const [baselineScore] = scoreBrief(replaceBrief(brief, { [field]: baseline }));
+    let direction = null;
+    if (score > baselineScore) direction = "up";
+    else if (score < baselineScore) direction = "down";
+    if (!direction) continue;
+    rows.push(assumption(id, label, metric, direction, String(brief[field])));
+  }
+  return rows;
+}
+
+function assumption(id, label, metric, direction, source) {
+  return { id, label, metric, direction, source };
+}
+
+export function analyseSlate(payload) {
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new ProjectInputError("Request body must be a JSON object.");
+  }
+  const rawBriefs = payload.briefs;
+  if (!Array.isArray(rawBriefs) || rawBriefs.length < 1 || rawBriefs.length > 6) {
+    throw new ProjectInputError("Provide between 1 and 6 briefs.");
+  }
+  const hoursPerWeek = coerceInt(payload.hoursPerWeek, 8, 1, 60);
+  const prepared = rawBriefs.map((raw, index) => {
+    const result = analyseProject(raw);
+    return {
+      index,
+      brief: publicBrief(coercePayload(raw)),
+      result,
+      score: result.score,
+      decision: result.goNoGo.decision,
+    };
+  });
+  prepared.sort((a, b) => b.score - a.score || a.index - b.index);
+
+  const labels = prepared.map((item) => {
+    if (item.decision === "GO") return "do";
+    if (item.decision === "CONDITIONAL") return "park";
+    return "kill";
+  });
+  const assigned = prepared.map(() => 0);
+  const goIndexes = [];
+  const conditionalIndexes = [];
+  prepared.forEach((item, index) => {
+    if (item.decision === "GO") goIndexes.push(index);
+    else if (item.decision === "CONDITIONAL") conditionalIndexes.push(index);
+  });
+
+  let pool = hoursPerWeek;
+  if (goIndexes.length > 0) {
+    for (const index of goIndexes) {
+      if (pool <= 0) {
+        labels[index] = "park";
+        assigned[index] = 0;
+        continue;
+      }
+      labels[index] = "do";
+      assigned[index] = 1;
+      pool -= 1;
+    }
+    const doIndexes = labels
+      .map((label, index) => (label === "do" ? index : -1))
+      .filter((index) => index >= 0);
+    if (doIndexes.length && pool > 0) {
+      assigned[doIndexes[0]] += pool;
+    }
+  } else if (conditionalIndexes.length > 0) {
+    const top = conditionalIndexes[0];
+    labels[top] = "do";
+    assigned[top] = hoursPerWeek;
+  }
+
+  let totalAssigned = 0;
+  const items = prepared.map((item, index) => {
+    totalAssigned += assigned[index];
+    return {
+      brief: item.brief,
+      result: item.result,
+      rank: index + 1,
+      label: labels[index],
+      hours: assigned[index],
+    };
+  });
+
+  return {
+    modelVersion: MODEL_VERSION,
+    hoursPerWeek,
+    totalAssigned,
+    items,
+  };
+}
+
+function publicBrief(brief) {
+  return {
+    idea: brief.idea,
+    goal: brief.goal,
+    deadlineDays: brief.deadline_days,
+    hoursPerWeek: brief.hours_per_week,
+    confidence: brief.confidence,
+    scope: brief.scope,
+    riskAppetite: brief.risk_appetite,
+    evidence: brief.evidence,
+    mutedSignals: [...brief.muted_signals],
+  };
 }
 
 function deadlineFit(days) {

@@ -1,6 +1,6 @@
 import unittest
 
-from pulseboard import ProjectInputError, analyse_project
+from pulseboard import ProjectInputError, analyse_project, analyse_slate
 
 
 class EngineTests(unittest.TestCase):
@@ -24,7 +24,7 @@ class EngineTests(unittest.TestCase):
         self.assertIn("api", result["signals"])
         self.assertEqual(set(result["smallestExperiment"]), {"build", "test", "success"})
         self.assertGreaterEqual(len(result["questions"]), 3)
-        self.assertEqual(result["modelVersion"], "9.0")
+        self.assertEqual(result["modelVersion"], "9.1")
         self.assertIn(result["goNoGo"]["decision"], {"GO", "CONDITIONAL", "NO-GO"})
         self.assertGreaterEqual(len(result["killCriteria"]), 2)
         self.assertGreaterEqual(len(result["sensitivityTable"]), 4)
@@ -346,6 +346,211 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(evidence_flip["decision"], "CONDITIONAL")
         self.assertEqual(evidence_flip["currentDecision"], "GO")
         self.assertEqual(evidence_flip["score"], result["score"] + evidence_flip["delta"])
+
+
+SAAS_BRIEF = {
+    "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+    "goal": "Ship a prototype for one SaaS workflow.",
+    "deadlineDays": 21,
+    "hoursPerWeek": 8,
+    "confidence": 4,
+    "scope": "focused",
+    "riskAppetite": "medium",
+    "evidence": "signals",
+}
+
+NO_GO_BRIEF = {
+    "idea": "x",
+    "deadlineDays": 1,
+    "hoursPerWeek": 1,
+    "confidence": 1,
+    "scope": "ambitious",
+    "evidence": "idea",
+}
+
+CONDITIONAL_BRIEF = {
+    "idea": "Build a focused dashboard for one customer workflow.",
+    "goal": "Ship a measurable prototype.",
+    "deadlineDays": 30,
+    "hoursPerWeek": 8,
+    "confidence": 4,
+    "scope": "focused",
+    "evidence": "idea",
+}
+
+
+class Engine91Tests(unittest.TestCase):
+    def test_default_brief_keeps_the_9_0_score_when_mutes_are_omitted(self):
+        omitted = analyse_project(SAAS_BRIEF)
+        explicit = analyse_project({**SAAS_BRIEF, "mutedSignals": []})
+        ignored = analyse_project({**SAAS_BRIEF, "mutedSignals": "api"})
+        unknown = analyse_project({**SAAS_BRIEF, "mutedSignals": ["revenue", "nope"]})
+
+        for result in (omitted, explicit, ignored, unknown):
+            self.assertEqual(result["score"], 75)
+            self.assertEqual(result["verdict"], "Promising, trim scope")
+            self.assertEqual(result["goNoGo"]["decision"], "GO")
+            self.assertEqual(
+                result["metrics"],
+                {
+                    "clarity": 89,
+                    "feasibility": 72,
+                    "momentum": 100,
+                    "evidence": 60,
+                    "risk": 58,
+                },
+            )
+            self.assertEqual(result["modelVersion"], "9.1")
+
+        self.assertEqual(omitted["score"], explicit["score"])
+        self.assertEqual(omitted["metrics"], explicit["metrics"])
+        self.assertEqual(omitted["verdict"], explicit["verdict"])
+        self.assertEqual(omitted["goNoGo"]["decision"], explicit["goNoGo"]["decision"])
+
+    def test_muting_a_present_signal_changes_the_score_and_records_it(self):
+        brief = {
+            "idea": "Ship one workflow.",
+            "goal": "Finish one useful slice.",
+        }
+        baseline = analyse_project(brief)
+        muted = analyse_project({**brief, "mutedSignals": ["ship", "not-a-signal"]})
+
+        self.assertIn("ship", baseline["signals"])
+        self.assertNotEqual(muted["score"], baseline["score"])
+        self.assertLess(muted["score"], baseline["score"])
+        self.assertNotIn("ship", muted["signals"])
+        self.assertIn("workflow", muted["signals"])
+        muted_rows = [row for row in muted["assumptions"] if row["source"] == "ship"]
+        self.assertEqual(
+            muted_rows,
+            [
+                {
+                    "id": "signal_ship",
+                    "label": "ship",
+                    "metric": "clarity",
+                    "direction": "muted",
+                    "source": "ship",
+                }
+            ],
+        )
+        self.assertNotIn("signal_ship", [row["id"] for row in muted["assumptions"] if row["direction"] == "up"])
+
+    def test_flat_baseline_inputs_are_omitted_from_assumptions(self):
+        result = analyse_project(
+            {
+                "idea": "Organize metadata for a catalogue.",
+                "goal": "Finish one useful slice.",
+                "deadlineDays": 21,
+                "hoursPerWeek": 8,
+                "confidence": 3,
+                "scope": "focused",
+                "riskAppetite": "medium",
+                "evidence": "idea",
+            }
+        )
+
+        self.assertEqual(
+            [row["id"] for row in result["assumptions"]],
+            ["idea_words", "goal_words"],
+        )
+        self.assertTrue(all(row["direction"] == "up" for row in result["assumptions"]))
+
+        shifted = analyse_project(
+            {
+                "idea": "Organize metadata for a catalogue.",
+                "goal": "Finish one useful slice.",
+                "deadlineDays": 7,
+                "hoursPerWeek": 4,
+                "confidence": 5,
+                "scope": "tiny",
+                "riskAppetite": "low",
+                "evidence": "users",
+            }
+        )
+        by_id = {row["id"]: row for row in shifted["assumptions"]}
+        self.assertEqual(by_id["confidence"]["direction"], "up")
+        self.assertEqual(by_id["confidence"]["metric"], "momentum")
+        self.assertEqual(by_id["hours"]["direction"], "down")
+        self.assertEqual(by_id["hours"]["metric"], "momentum")
+        self.assertEqual(by_id["deadline"]["direction"], "down")
+        self.assertEqual(by_id["deadline"]["metric"], "risk")
+        self.assertEqual(by_id["scope"]["direction"], "up")
+        self.assertEqual(by_id["scope"]["metric"], "feasibility")
+        self.assertEqual(by_id["evidence"]["direction"], "up")
+        self.assertEqual(by_id["evidence"]["metric"], "evidence")
+        self.assertEqual(by_id["risk_appetite"]["direction"], "down")
+        self.assertEqual(by_id["risk_appetite"]["metric"], "risk")
+        self.assertNotIn("signal_data", by_id)
+
+    def test_detected_signal_rows_stay_even_when_controls_are_flat(self):
+        result = analyse_project(
+            {
+                "idea": "Ship one workflow.",
+                "goal": "Finish one useful slice.",
+            }
+        )
+        signal_rows = [row for row in result["assumptions"] if row["id"].startswith("signal_")]
+        self.assertEqual([row["id"] for row in signal_rows], ["signal_ship", "signal_workflow"])
+        self.assertTrue(all(row["direction"] == "up" for row in signal_rows))
+
+    def test_one_go_and_one_no_go_assigns_the_pool_to_the_go(self):
+        slate = analyse_slate({"hoursPerWeek": 8, "briefs": [NO_GO_BRIEF, SAAS_BRIEF]})
+
+        self.assertEqual(slate["modelVersion"], "9.1")
+        self.assertEqual(slate["hoursPerWeek"], 8)
+        self.assertEqual(slate["totalAssigned"], 8)
+        self.assertEqual([item["rank"] for item in slate["items"]], [1, 2])
+        self.assertEqual(slate["items"][0]["label"], "do")
+        self.assertEqual(slate["items"][0]["hours"], 8)
+        self.assertEqual(slate["items"][0]["result"]["goNoGo"]["decision"], "GO")
+        self.assertEqual(slate["items"][0]["result"]["score"], 75)
+        self.assertEqual(slate["items"][1]["label"], "kill")
+        self.assertEqual(slate["items"][1]["hours"], 0)
+        self.assertEqual(slate["items"][1]["result"]["goNoGo"]["decision"], "NO-GO")
+
+    def test_six_no_go_briefs_assign_nothing(self):
+        slate = analyse_slate({"hoursPerWeek": 8, "briefs": [NO_GO_BRIEF] * 6})
+
+        self.assertEqual(slate["totalAssigned"], 0)
+        self.assertEqual(len(slate["items"]), 6)
+        self.assertTrue(all(item["label"] == "kill" and item["hours"] == 0 for item in slate["items"]))
+        self.assertEqual([item["rank"] for item in slate["items"]], [1, 2, 3, 4, 5, 6])
+
+    def test_two_gos_with_one_hour_park_the_lower_go(self):
+        higher = {**SAAS_BRIEF, "scope": "tiny"}
+        slate = analyse_slate({"hoursPerWeek": 1, "briefs": [SAAS_BRIEF, higher]})
+
+        self.assertGreater(slate["items"][0]["result"]["score"], slate["items"][1]["result"]["score"])
+        self.assertEqual(slate["items"][0]["brief"]["scope"], "tiny")
+        self.assertEqual(slate["items"][0]["label"], "do")
+        self.assertEqual(slate["items"][0]["hours"], 1)
+        self.assertEqual(slate["items"][0]["result"]["goNoGo"]["decision"], "GO")
+        self.assertEqual(slate["items"][1]["label"], "park")
+        self.assertEqual(slate["items"][1]["hours"], 0)
+        self.assertEqual(slate["items"][1]["result"]["goNoGo"]["decision"], "GO")
+        self.assertEqual(slate["totalAssigned"], 1)
+
+    def test_all_conditional_assigns_the_full_pool_to_the_top_one(self):
+        lower = {**CONDITIONAL_BRIEF, "confidence": 2}
+        slate = analyse_slate({"hoursPerWeek": 6, "briefs": [lower, CONDITIONAL_BRIEF]})
+
+        self.assertTrue(
+            all(item["result"]["goNoGo"]["decision"] == "CONDITIONAL" for item in slate["items"])
+        )
+        self.assertEqual(slate["items"][0]["brief"]["confidence"], 4)
+        self.assertEqual(slate["items"][0]["label"], "do")
+        self.assertEqual(slate["items"][0]["hours"], 6)
+        self.assertEqual(slate["items"][1]["label"], "park")
+        self.assertEqual(slate["items"][1]["hours"], 0)
+        self.assertEqual(slate["totalAssigned"], 6)
+
+    def test_slate_rejects_empty_and_oversized_boards(self):
+        with self.assertRaises(ProjectInputError):
+            analyse_slate({"briefs": []})
+        with self.assertRaises(ProjectInputError):
+            analyse_slate({"briefs": [SAAS_BRIEF] * 7})
+        with self.assertRaises(ProjectInputError):
+            analyse_slate(["not", "an", "object"])
 
 
 if __name__ == "__main__":

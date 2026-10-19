@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-from pulseboard import MODEL_VERSION, ProjectInputError, analyse_project
+from pulseboard import MODEL_VERSION, ProjectInputError, analyse_project, analyse_slate
 
 ROOT = Path(__file__).resolve().parent
-MAX_BODY_BYTES = 16_384
+SCORE_MAX_BODY_BYTES = 16_384
+SLATE_MAX_BODY_BYTES = 65_536
 PUBLIC_ROOT_FILES = {"index.html", "favicon.svg"}
 
 
@@ -29,11 +30,21 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
                 {"name": "PulseBoard Studio API", "status": "ok", "modelVersion": MODEL_VERSION}
             )
             return
+        if parsed.path == "/api/slate":
+            self._send_json(
+                {
+                    "name": "PulseBoard Studio API",
+                    "status": "ok",
+                    "modelVersion": MODEL_VERSION,
+                    "route": "slate",
+                }
+            )
+            return
         self._serve_static(parsed.path)
 
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
-        if parsed.path != "/api/score":
+        if parsed.path not in {"/api/score", "/api/slate"}:
             self._send_json({"error": "Unknown API route."}, status=404)
             return
 
@@ -42,8 +53,12 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            payload = self._read_json()
-            result = analyse_project(payload)
+            limit = SLATE_MAX_BODY_BYTES if parsed.path == "/api/slate" else SCORE_MAX_BODY_BYTES
+            payload = self._read_json(limit)
+            if parsed.path == "/api/slate":
+                result = analyse_slate(payload)
+            else:
+                result = analyse_project(payload)
         except ProjectInputError as exc:
             self._send_json({"error": str(exc)}, status=400)
             return
@@ -97,14 +112,14 @@ class PulseBoardHandler(BaseHTTPRequestHandler):
             return True
         return relative.parts[0] == "static"
 
-    def _read_json(self) -> dict[str, Any]:
+    def _read_json(self, limit: int) -> dict[str, Any]:
         try:
             length = int(self.headers.get("content-length", "0") or "0")
         except ValueError as exc:
             raise ProjectInputError("Content-Length must be a valid integer.") from exc
         if length < 0:
             raise ProjectInputError("Content-Length cannot be negative.")
-        if length > MAX_BODY_BYTES:
+        if length > limit:
             raise ValueError("Request body is too large.")
         raw = self.rfile.read(length) if length else b"{}"
         return json.loads(raw.decode("utf-8"))

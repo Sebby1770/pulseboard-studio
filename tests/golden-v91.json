@@ -1,0 +1,538 @@
+{
+  "mute": {
+    "payload": {
+      "idea": "Ship one workflow.",
+      "goal": "Finish one useful slice.",
+      "mutedSignals": [
+        "ship",
+        "not-a-signal"
+      ]
+    },
+    "score": 50,
+    "verdict": "Prototype carefully",
+    "decision": "CONDITIONAL",
+    "metrics": {
+      "clarity": 47,
+      "feasibility": 61,
+      "momentum": 77,
+      "evidence": 20,
+      "risk": 75
+    },
+    "signals": [
+      "workflow"
+    ],
+    "assumptions": [
+      {
+        "id": "idea_words",
+        "label": "Idea words",
+        "metric": "clarity",
+        "direction": "up",
+        "source": "3"
+      },
+      {
+        "id": "goal_words",
+        "label": "Goal words",
+        "metric": "clarity",
+        "direction": "up",
+        "source": "4"
+      },
+      {
+        "id": "signal_workflow",
+        "label": "workflow",
+        "metric": "clarity",
+        "direction": "up",
+        "source": "workflow"
+      },
+      {
+        "id": "signal_ship",
+        "label": "ship",
+        "metric": "clarity",
+        "direction": "muted",
+        "source": "ship"
+      }
+    ]
+  },
+  "slates": [
+    {
+      "name": "go-and-no-go",
+      "payload": {
+        "hoursPerWeek": 8,
+        "briefs": [
+          {
+            "idea": "x",
+            "deadlineDays": 1,
+            "hoursPerWeek": 1,
+            "confidence": 1,
+            "scope": "ambitious",
+            "evidence": "idea"
+          },
+          {
+            "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+            "goal": "Ship a prototype for one SaaS workflow.",
+            "deadlineDays": 21,
+            "hoursPerWeek": 8,
+            "confidence": 4,
+            "scope": "focused",
+            "riskAppetite": "medium",
+            "evidence": "signals"
+          }
+        ]
+      },
+      "expect": {
+        "modelVersion": "9.1",
+        "hoursPerWeek": 8,
+        "totalAssigned": 8,
+        "items": [
+          {
+            "rank": 1,
+            "label": "do",
+            "hours": 8,
+            "brief": {
+              "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+              "scope": "focused",
+              "confidence": 4,
+              "mutedSignals": []
+            },
+            "score": 75,
+            "verdict": "Promising, trim scope",
+            "decision": "GO",
+            "metrics": {
+              "clarity": 89,
+              "feasibility": 72,
+              "momentum": 100,
+              "evidence": 60,
+              "risk": 58
+            },
+            "signals": [
+              "api",
+              "customer",
+              "dashboard",
+              "data",
+              "launch",
+              "prototype",
+              "ship",
+              "workflow"
+            ]
+          },
+          {
+            "rank": 2,
+            "label": "kill",
+            "hours": 0,
+            "brief": {
+              "idea": "x",
+              "scope": "ambitious",
+              "confidence": 1,
+              "mutedSignals": []
+            },
+            "score": 23,
+            "verdict": "Reshape before building",
+            "decision": "NO-GO",
+            "metrics": {
+              "clarity": 46,
+              "feasibility": 19,
+              "momentum": 23,
+              "evidence": 20,
+              "risk": 100
+            },
+            "signals": [
+              "ship"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "six-no-go",
+      "payload": {
+        "hoursPerWeek": 8,
+        "briefs": [
+          {
+            "idea": "x",
+            "deadlineDays": 1,
+            "hoursPerWeek": 1,
+            "confidence": 1,
+            "scope": "ambitious",
+            "evidence": "idea"
+          },
+          {
+            "idea": "x",
+            "deadlineDays": 1,
+            "hoursPerWeek": 1,
+            "confidence": 1,
+            "scope": "ambitious",
+            "evidence": "idea"
+          },
+          {
+            "idea": "x",
+            "deadlineDays": 1,
+            "hoursPerWeek": 1,
+            "confidence": 1,
+            "scope": "ambitious",
+            "evidence": "idea"
+          },
+          {
+            "idea": "x",
+            "deadlineDays": 1,
+            "hoursPerWeek": 1,
+            "confidence": 1,
+            "scope": "ambitious",
+            "evidence": "idea"
+          },
+          {
+            "idea": "x",
+            "deadlineDays": 1,
+            "hoursPerWeek": 1,
+            "confidence": 1,
+            "scope": "ambitious",
+            "evidence": "idea"
+          },
+          {
+            "idea": "x",
+            "deadlineDays": 1,
+            "hoursPerWeek": 1,
+            "confidence": 1,
+            "scope": "ambitious",
+            "evidence": "idea"
+          }
+        ]
+      },
+      "expect": {
+        "modelVersion": "9.1",
+        "hoursPerWeek": 8,
+        "totalAssigned": 0,
+        "items": [
+          {
+            "rank": 1,
+            "label": "kill",
+            "hours": 0,
+            "brief": {
+              "idea": "x",
+              "scope": "ambitious",
+              "confidence": 1,
+              "mutedSignals": []
+            },
+            "score": 23,
+            "verdict": "Reshape before building",
+            "decision": "NO-GO",
+            "metrics": {
+              "clarity": 46,
+              "feasibility": 19,
+              "momentum": 23,
+              "evidence": 20,
+              "risk": 100
+            },
+            "signals": [
+              "ship"
+            ]
+          },
+          {
+            "rank": 2,
+            "label": "kill",
+            "hours": 0,
+            "brief": {
+              "idea": "x",
+              "scope": "ambitious",
+              "confidence": 1,
+              "mutedSignals": []
+            },
+            "score": 23,
+            "verdict": "Reshape before building",
+            "decision": "NO-GO",
+            "metrics": {
+              "clarity": 46,
+              "feasibility": 19,
+              "momentum": 23,
+              "evidence": 20,
+              "risk": 100
+            },
+            "signals": [
+              "ship"
+            ]
+          },
+          {
+            "rank": 3,
+            "label": "kill",
+            "hours": 0,
+            "brief": {
+              "idea": "x",
+              "scope": "ambitious",
+              "confidence": 1,
+              "mutedSignals": []
+            },
+            "score": 23,
+            "verdict": "Reshape before building",
+            "decision": "NO-GO",
+            "metrics": {
+              "clarity": 46,
+              "feasibility": 19,
+              "momentum": 23,
+              "evidence": 20,
+              "risk": 100
+            },
+            "signals": [
+              "ship"
+            ]
+          },
+          {
+            "rank": 4,
+            "label": "kill",
+            "hours": 0,
+            "brief": {
+              "idea": "x",
+              "scope": "ambitious",
+              "confidence": 1,
+              "mutedSignals": []
+            },
+            "score": 23,
+            "verdict": "Reshape before building",
+            "decision": "NO-GO",
+            "metrics": {
+              "clarity": 46,
+              "feasibility": 19,
+              "momentum": 23,
+              "evidence": 20,
+              "risk": 100
+            },
+            "signals": [
+              "ship"
+            ]
+          },
+          {
+            "rank": 5,
+            "label": "kill",
+            "hours": 0,
+            "brief": {
+              "idea": "x",
+              "scope": "ambitious",
+              "confidence": 1,
+              "mutedSignals": []
+            },
+            "score": 23,
+            "verdict": "Reshape before building",
+            "decision": "NO-GO",
+            "metrics": {
+              "clarity": 46,
+              "feasibility": 19,
+              "momentum": 23,
+              "evidence": 20,
+              "risk": 100
+            },
+            "signals": [
+              "ship"
+            ]
+          },
+          {
+            "rank": 6,
+            "label": "kill",
+            "hours": 0,
+            "brief": {
+              "idea": "x",
+              "scope": "ambitious",
+              "confidence": 1,
+              "mutedSignals": []
+            },
+            "score": 23,
+            "verdict": "Reshape before building",
+            "decision": "NO-GO",
+            "metrics": {
+              "clarity": 46,
+              "feasibility": 19,
+              "momentum": 23,
+              "evidence": 20,
+              "risk": 100
+            },
+            "signals": [
+              "ship"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "two-gos-one-hour",
+      "payload": {
+        "hoursPerWeek": 1,
+        "briefs": [
+          {
+            "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+            "goal": "Ship a prototype for one SaaS workflow.",
+            "deadlineDays": 21,
+            "hoursPerWeek": 8,
+            "confidence": 4,
+            "scope": "focused",
+            "riskAppetite": "medium",
+            "evidence": "signals"
+          },
+          {
+            "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+            "goal": "Ship a prototype for one SaaS workflow.",
+            "deadlineDays": 21,
+            "hoursPerWeek": 8,
+            "confidence": 4,
+            "scope": "tiny",
+            "riskAppetite": "medium",
+            "evidence": "signals"
+          }
+        ]
+      },
+      "expect": {
+        "modelVersion": "9.1",
+        "hoursPerWeek": 1,
+        "totalAssigned": 1,
+        "items": [
+          {
+            "rank": 1,
+            "label": "do",
+            "hours": 1,
+            "brief": {
+              "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+              "scope": "tiny",
+              "confidence": 4,
+              "mutedSignals": []
+            },
+            "score": 83,
+            "verdict": "Green light",
+            "decision": "GO",
+            "metrics": {
+              "clarity": 89,
+              "feasibility": 87,
+              "momentum": 100,
+              "evidence": 60,
+              "risk": 32
+            },
+            "signals": [
+              "api",
+              "customer",
+              "dashboard",
+              "data",
+              "launch",
+              "prototype",
+              "ship",
+              "workflow"
+            ]
+          },
+          {
+            "rank": 2,
+            "label": "park",
+            "hours": 0,
+            "brief": {
+              "idea": "Build an API dashboard that tracks customer usage data and launch risks.",
+              "scope": "focused",
+              "confidence": 4,
+              "mutedSignals": []
+            },
+            "score": 75,
+            "verdict": "Promising, trim scope",
+            "decision": "GO",
+            "metrics": {
+              "clarity": 89,
+              "feasibility": 72,
+              "momentum": 100,
+              "evidence": 60,
+              "risk": 58
+            },
+            "signals": [
+              "api",
+              "customer",
+              "dashboard",
+              "data",
+              "launch",
+              "prototype",
+              "ship",
+              "workflow"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "all-conditional",
+      "payload": {
+        "hoursPerWeek": 6,
+        "briefs": [
+          {
+            "idea": "Build a focused dashboard for one customer workflow.",
+            "goal": "Ship a measurable prototype.",
+            "deadlineDays": 30,
+            "hoursPerWeek": 8,
+            "confidence": 2,
+            "scope": "focused",
+            "evidence": "idea"
+          },
+          {
+            "idea": "Build a focused dashboard for one customer workflow.",
+            "goal": "Ship a measurable prototype.",
+            "deadlineDays": 30,
+            "hoursPerWeek": 8,
+            "confidence": 4,
+            "scope": "focused",
+            "evidence": "idea"
+          }
+        ]
+      },
+      "expect": {
+        "modelVersion": "9.1",
+        "hoursPerWeek": 6,
+        "totalAssigned": 6,
+        "items": [
+          {
+            "rank": 1,
+            "label": "do",
+            "hours": 6,
+            "brief": {
+              "idea": "Build a focused dashboard for one customer workflow.",
+              "scope": "focused",
+              "confidence": 4,
+              "mutedSignals": []
+            },
+            "score": 64,
+            "verdict": "Promising, trim scope",
+            "decision": "CONDITIONAL",
+            "metrics": {
+              "clarity": 70,
+              "feasibility": 72,
+              "momentum": 100,
+              "evidence": 20,
+              "risk": 65
+            },
+            "signals": [
+              "customer",
+              "dashboard",
+              "prototype",
+              "ship",
+              "workflow"
+            ]
+          },
+          {
+            "rank": 2,
+            "label": "park",
+            "hours": 0,
+            "brief": {
+              "idea": "Build a focused dashboard for one customer workflow.",
+              "scope": "focused",
+              "confidence": 2,
+              "mutedSignals": []
+            },
+            "score": 55,
+            "verdict": "Prototype carefully",
+            "decision": "CONDITIONAL",
+            "metrics": {
+              "clarity": 70,
+              "feasibility": 58,
+              "momentum": 84,
+              "evidence": 20,
+              "risk": 79
+            },
+            "signals": [
+              "customer",
+              "dashboard",
+              "prototype",
+              "ship",
+              "workflow"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

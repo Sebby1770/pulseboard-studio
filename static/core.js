@@ -1,3 +1,5 @@
+import { SIGNAL_WORDS } from "./engine.js";
+
 export const DEFAULT_GOAL = "Ship a usable first version.";
 export const HISTORY_LIMIT = 6;
 
@@ -138,7 +140,39 @@ export function normalizePayload(payload = {}) {
       ? payload.riskAppetite
       : "medium",
     evidence: ["idea", "signals", "users"].includes(payload.evidence) ? payload.evidence : "idea",
+    mutedSignals: normalizeMuted(payload.mutedSignals),
   };
+}
+
+export function normalizeMuted(value) {
+  let tokens = [];
+  if (Array.isArray(value)) {
+    tokens = value;
+  } else if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        tokens = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        tokens = [];
+      }
+    } else {
+      tokens = trimmed.split(",");
+    }
+  }
+  const muted = [];
+  const seen = new Set();
+  for (const item of tokens) {
+    if (typeof item !== "string") continue;
+    const token = item.trim().toLowerCase();
+    if (!SIGNAL_WORDS.has(token) || seen.has(token)) continue;
+    seen.add(token);
+    muted.push(token);
+  }
+  muted.sort();
+  return muted;
 }
 
 export function buildShareUrl(payload, baseUrl) {
@@ -159,6 +193,9 @@ export function buildShareUrl(payload, baseUrl) {
   params.set("scope", normalized.scope);
   params.set("risk", normalized.riskAppetite);
   params.set("evidence", normalized.evidence);
+  if (normalized.mutedSignals.length) {
+    params.set("mutedSignals", normalized.mutedSignals.join(","));
+  }
   url.hash = params.toString();
   return url.toString();
 }
@@ -178,6 +215,7 @@ export function parseShareUrl(value) {
       scope: params.get("scope"),
       riskAppetite: params.get("risk"),
       evidence: params.get("evidence"),
+      mutedSignals: params.get("mutedSignals") ?? params.get("muted"),
     });
     return payload.idea ? payload : null;
   } catch {
@@ -185,8 +223,9 @@ export function parseShareUrl(value) {
   }
 }
 
-export function buildMemo(payload, result, comparison = null) {
+export function buildMemo(payload, result, comparison = null, slateRank = null) {
   const normalizedPayload = normalizePayload(payload);
+  const slateLine = formatSlateRank(slateRank);
   const lever = result.recommendedLever || DEFAULT_LEVER;
   const evidenceGrade = result.evidenceGrade || defaultEvidenceGrade();
   const scoreRange = result.scoreRange || defaultScoreRange(result);
@@ -217,7 +256,7 @@ export function buildMemo(payload, result, comparison = null) {
 
 **First release goal:** ${normalizedPayload.goal || DEFAULT_GOAL}
 
-**Validation evidence:** ${EVIDENCE_LABELS[normalizedPayload.evidence]}
+${slateLine}**Validation evidence:** ${EVIDENCE_LABELS[normalizedPayload.evidence]}
 
 **Score confidence:** ${evidenceGrade.label} - ${evidenceGrade.detail}
 
@@ -421,6 +460,13 @@ function numberParam(params, name) {
 
 function formatDelta(value) {
   return value > 0 ? `+${value}` : String(value);
+}
+
+function formatSlateRank(slateRank) {
+  if (!slateRank || !Number.isFinite(Number(slateRank.rank))) return "";
+  if (!["do", "park", "kill"].includes(slateRank.label)) return "";
+  const hours = Number.isFinite(Number(slateRank.hours)) ? Number(slateRank.hours) : 0;
+  return `**Slate rank:** #${slateRank.rank} · ${slateRank.label} · ${hours}h\n\n`;
 }
 
 function normalizeComparableResult(result) {

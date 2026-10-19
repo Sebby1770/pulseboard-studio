@@ -52,7 +52,7 @@ EVIDENCE_MARGINS = {
     "users": 3,
 }
 
-MODEL_VERSION = "9.0"
+MODEL_VERSION = "9.1"
 
 GO_THRESHOLD = 72
 NO_GO_THRESHOLD = 42
@@ -70,6 +70,7 @@ class ProjectBrief:
     scope: str
     risk_appetite: str
     evidence: str
+    muted_signals: frozenset[str] = frozenset()
 
 
 def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
@@ -86,6 +87,7 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
         "summary": _summary(brief, score),
         "evidenceGrade": _evidence_grade(brief.evidence),
         "signals": sorted(signals),
+        "assumptions": _assumptions(brief, score),
         "metrics": metrics,
         "recommendedLever": _recommended_lever(brief, metrics),
         "highestImpactMoves": _highest_impact_moves(brief, score),
@@ -105,10 +107,156 @@ def analyse_project(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def analyse_slate(payload: dict[str, Any]) -> dict[str, Any]:
+    """Rank one to six briefs and assign a shared weekly hour pool."""
+
+    if not isinstance(payload, dict):
+        raise ProjectInputError("Request body must be a JSON object.")
+
+    raw_briefs = payload.get("briefs")
+    if not isinstance(raw_briefs, list) or not 1 <= len(raw_briefs) <= 6:
+        raise ProjectInputError("Provide between 1 and 6 briefs.")
+
+    hours_per_week = _coerce_int(payload.get("hoursPerWeek"), default=8, minimum=1, maximum=60)
+    prepared: list[dict[str, Any]] = []
+    for index, raw in enumerate(raw_briefs):
+        result = analyse_project(raw)
+        prepared.append(
+            {
+                "index": index,
+                "brief": _public_brief(_coerce_payload(raw)),
+                "result": result,
+                "score": result["score"],
+                "decision": result["goNoGo"]["decision"],
+            }
+        )
+
+    prepared.sort(key=lambda item: (-item["score"], item["index"]))
+    labels: list[str] = []
+    assigned: list[int] = []
+    for item in prepared:
+        if item["decision"] == "GO":
+            labels.append("do")
+        elif item["decision"] == "CONDITIONAL":
+            labels.append("park")
+        else:
+            labels.append("kill")
+        assigned.append(0)
+
+    go_indexes = [index for index, item in enumerate(prepared) if item["decision"] == "GO"]
+    conditional_indexes = [
+        index for index, item in enumerate(prepared) if item["decision"] == "CONDITIONAL"
+    ]
+    pool = hours_per_week
+    if go_indexes:
+        for index in go_indexes:
+            if pool <= 0:
+                labels[index] = "park"
+                assigned[index] = 0
+                continue
+            labels[index] = "do"
+            assigned[index] = 1
+            pool -= 1
+        do_indexes = [index for index, label in enumerate(labels) if label == "do"]
+        if do_indexes and pool > 0:
+            assigned[do_indexes[0]] += pool
+    elif conditional_indexes:
+        top = conditional_indexes[0]
+        labels[top] = "do"
+        assigned[top] = hours_per_week
+
+    items: list[dict[str, Any]] = []
+    total_assigned = 0
+    for rank, item in enumerate(prepared, start=1):
+        hours = assigned[rank - 1]
+        total_assigned += hours
+        items.append(
+            {
+                "brief": item["brief"],
+                "result": item["result"],
+                "rank": rank,
+                "label": labels[rank - 1],
+                "hours": hours,
+            }
+        )
+
+    return {
+        "modelVersion": MODEL_VERSION,
+        "hoursPerWeek": hours_per_week,
+        "totalAssigned": total_assigned,
+        "items": items,
+    }
+
+
+def _public_brief(brief: ProjectBrief) -> dict[str, Any]:
+    return {
+        "idea": brief.idea,
+        "goal": brief.goal,
+        "deadlineDays": brief.deadline_days,
+        "hoursPerWeek": brief.hours_per_week,
+        "confidence": brief.confidence,
+        "scope": brief.scope,
+        "riskAppetite": brief.risk_appetite,
+        "evidence": brief.evidence,
+        "mutedSignals": sorted(brief.muted_signals),
+    }
+
+
+def _assumptions(brief: ProjectBrief, score: int) -> list[dict[str, str]]:
+    """Name the inputs that actually move this score. Baseline rows are omitted."""
+
+    idea_words = _word_count(brief.idea)
+    goal_words = _word_count(brief.goal)
+    detected, muted = _partition_signals(brief)
+    rows: list[dict[str, str]] = []
+    if idea_words > 0:
+        rows.append(_assumption("idea_words", "Idea words", "clarity", "up", str(idea_words)))
+    if goal_words > 0:
+        rows.append(_assumption("goal_words", "Goal words", "clarity", "up", str(goal_words)))
+    for word in sorted(detected):
+        rows.append(_assumption(f"signal_{word}", word, "clarity", "up", word))
+    for word in sorted(muted):
+        rows.append(_assumption(f"signal_{word}", word, "clarity", "muted", word))
+
+    controls = (
+        ("confidence", "Confidence", "momentum", "confidence", 3),
+        ("hours", "Hours per week", "momentum", "hours_per_week", 8),
+        ("deadline", "Deadline", "risk", "deadline_days", 21),
+        ("scope", "Scope", "feasibility", "scope", "focused"),
+        ("evidence", "Evidence", "evidence", "evidence", "idea"),
+        ("risk_appetite", "Risk appetite", "risk", "risk_appetite", "medium"),
+    )
+    for assumption_id, label, metric, field, baseline in controls:
+        current = getattr(brief, field)
+        if current == baseline:
+            continue
+        baseline_score = _score_brief(replace(brief, **{field: baseline}))[0]
+        if score > baseline_score:
+            direction = "up"
+        elif score < baseline_score:
+            direction = "down"
+        else:
+            continue
+        rows.append(_assumption(assumption_id, label, metric, direction, str(current)))
+    return rows
+
+
+def _assumption(
+    assumption_id: str, label: str, metric: str, direction: str, source: str
+) -> dict[str, str]:
+    return {
+        "id": assumption_id,
+        "label": label,
+        "metric": metric,
+        "direction": direction,
+        "source": source,
+    }
+
+
 def _score_brief(brief: ProjectBrief) -> tuple[int, dict[str, int], set[str]]:
     idea_words = _word_count(brief.idea)
     goal_words = _word_count(brief.goal)
-    signals = _signal_hits(f"{brief.idea} {brief.goal}")
+    signals, _muted = _partition_signals(brief)
 
     evidence = EVIDENCE_SCORES[brief.evidence]
     clarity = _clamp(
@@ -207,6 +355,7 @@ def _coerce_payload(payload: dict[str, Any]) -> ProjectBrief:
         scope=scope,
         risk_appetite=risk_appetite,
         evidence=evidence,
+        muted_signals=_coerce_muted(payload.get("mutedSignals")),
     )
 
 
@@ -232,6 +381,25 @@ def _word_count(text: str) -> int:
 def _signal_hits(text: str) -> set[str]:
     tokens = set(re.findall(r"[a-z0-9]+", text.lower()))
     return SIGNAL_WORDS.intersection(tokens)
+
+
+def _coerce_muted(value: Any) -> frozenset[str]:
+    if not isinstance(value, list):
+        return frozenset()
+    muted: set[str] = set()
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        token = item.strip().lower()
+        if token in SIGNAL_WORDS:
+            muted.add(token)
+    return frozenset(muted)
+
+
+def _partition_signals(brief: ProjectBrief) -> tuple[set[str], set[str]]:
+    raw = _signal_hits(f"{brief.idea} {brief.goal}")
+    muted = raw.intersection(brief.muted_signals)
+    return raw - muted, muted
 
 
 def _deadline_fit(days: int) -> float:

@@ -44,6 +44,10 @@
             <div class="status-chip" id="apiStatus" role="status" aria-live="polite">
               Checking engine
             </div>
+            <div class="mode-switch" role="group" aria-label="Workspace mode">
+              <button type="button" id="modeBrief" aria-pressed="true">Brief</button>
+              <button type="button" id="modeBoard" aria-pressed="false">Board</button>
+            </div>
             <button type="button" class="theme-toggle" id="themeToggle">Dark</button>
           </div>
         </div>
@@ -161,7 +165,7 @@
         <section class="panel result-panel">
           <div class="panel-bar">
             <strong>Result</strong>
-            <span id="modelVersion">Engine 9.0</span>
+            <span id="modelVersion">Engine 9.1</span>
           </div>
           <div class="panel-content result-content">
             <div class="score-header">
@@ -177,6 +181,7 @@
                   <span id="scoreValue">--</span>
                 </div>
                 <button type="button" id="baselineButton" disabled>Set baseline</button>
+                <div class="assumption-row" id="assumptionRow" aria-label="Score assumptions" hidden></div>
                 <div class="memo-actions">
                   <button type="button" id="undoButton" disabled>Undo</button>
                   <button type="button" id="copyMemoButton" disabled>Copy memo</button>
@@ -187,6 +192,11 @@
               </div>
             </div>
 
+            <div class="journal-actions" id="journalActions" hidden>
+              <button type="button" id="markShipped">Mark shipped</button>
+              <button type="button" id="markHeld">Mark held</button>
+              <button type="button" id="markKilled">Mark killed</button>
+            </div>
             <p class="summary" id="summary">
               Add a project idea and PulseBoard will score clarity, feasibility, momentum,
               evidence, and risk.
@@ -421,12 +431,36 @@
             <button type="button" id="clearHistoryButton">Reset</button>
           </div>
           <canvas id="historySpark" class="history-spark" width="320" height="48" hidden></canvas>
+          <p class="calibration" id="calibrationStrip" hidden></p>
           <div id="historyList" class="history-list"></div>
         </aside>
       </section>
 
+      <section class="panel board-panel" id="boardPanel" hidden>
+        <div class="panel-bar"><strong>Board</strong><span>Up to 6</span></div>
+        <div class="panel-content">
+          <div class="board-toolbar">
+            <label>
+              Hours pool
+              <input id="slateHours" type="number" min="1" max="60" value="8" />
+            </label>
+            <button type="button" id="scoreSlateButton">Score slate</button>
+            <button type="button" id="addBriefButton">Add brief</button>
+            <button type="button" data-load-sample-slate>Load sample slate</button>
+          </div>
+          <p class="form-error" id="boardError" role="alert" hidden></p>
+          <div class="empty-cta" id="boardEmpty">
+            <p>No briefs on the board yet. Load three samples or add your own.</p>
+            <button type="button" data-load-sample-slate>Load sample slate</button>
+          </div>
+          <div class="board-cards" id="boardCards"></div>
+          <p class="board-assigned" id="boardAssigned" hidden></p>
+          <div class="board-results" id="boardResults" hidden></div>
+        </div>
+      </section>
+
       <footer class="app-footer">
-        <span>PulseBoard Studio v1.3.0</span>
+        <span>PulseBoard Studio v2.0.0</span>
         <a href="https://github.com/Sebby1770/pulseboard-studio">Source and changelog</a>
       </footer>
     </main>

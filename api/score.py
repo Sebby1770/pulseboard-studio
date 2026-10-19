@@ -12,9 +12,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pulseboard import MODEL_VERSION, ProjectInputError, analyse_project
+from pulseboard import MODEL_VERSION, ProjectInputError, analyse_project, analyse_slate
 
-MAX_BODY_BYTES = 16_384
+SCORE_MAX_BODY_BYTES = 16_384
+SLATE_MAX_BODY_BYTES = 65_536
 
 
 class handler(BaseHTTPRequestHandler):
@@ -26,8 +27,13 @@ class handler(BaseHTTPRequestHandler):
             self._send_json({"error": "Content-Type must be application/json."}, status=415)
             return
         try:
-            payload = self._read_json()
-            result = analyse_project(payload)
+            payload, length = self._read_json()
+            slate = self._is_slate_request(payload)
+            if slate and length > SLATE_MAX_BODY_BYTES:
+                raise ValueError("Request body is too large.")
+            if not slate and length > SCORE_MAX_BODY_BYTES:
+                raise ValueError("Request body is too large.")
+            result = analyse_slate(payload) if slate else analyse_project(payload)
         except ProjectInputError as exc:
             self._send_json({"error": str(exc)}, status=400)
             return
@@ -41,21 +47,31 @@ class handler(BaseHTTPRequestHandler):
         self._send_json(result)
 
     def do_GET(self) -> None:
-        self._send_json(
-            {"name": "PulseBoard Studio API", "status": "ok", "modelVersion": MODEL_VERSION}
+        payload = {"name": "PulseBoard Studio API", "status": "ok", "modelVersion": MODEL_VERSION}
+        if "slate" in (getattr(self, "path", "") or ""):
+            payload["route"] = "slate"
+        self._send_json(payload)
+
+    def _is_slate_request(self, payload: Any) -> bool:
+        if "slate" in (getattr(self, "path", "") or ""):
+            return True
+        return (
+            isinstance(payload, dict)
+            and isinstance(payload.get("briefs"), list)
+            and "idea" not in payload
         )
 
-    def _read_json(self) -> dict[str, Any]:
+    def _read_json(self) -> tuple[Any, int]:
         try:
             length = int(self.headers.get("content-length", "0") or "0")
         except ValueError as exc:
             raise ProjectInputError("Content-Length must be a valid integer.") from exc
         if length < 0:
             raise ProjectInputError("Content-Length cannot be negative.")
-        if length > MAX_BODY_BYTES:
+        if length > SLATE_MAX_BODY_BYTES:
             raise ValueError("Request body is too large.")
         raw = self.rfile.read(length) if length else b"{}"
-        return json.loads(raw.decode("utf-8"))
+        return json.loads(raw.decode("utf-8")), length
 
     def _accepts_json(self) -> bool:
         content_type = self.headers.get("content-type", "").split(";", 1)[0].strip().lower()
